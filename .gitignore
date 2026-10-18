@@ -1,0 +1,29 @@
+﻿# Secretos
+.env
+.env.local
+.env*.local
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# Base de datos local
+datos.db
+*.db
+subidas/
+
+# Cookies de YouTube (privadas)
+cookies_youtube.txt
+*cookies*.txt
+
+# Cachés y logs
+.pytest_cache/
+*.log
+*.tsbuildinfo
+next-env.d.ts

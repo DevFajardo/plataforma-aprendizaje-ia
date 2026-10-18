@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+.env
+.env.*
+!.env.example
+datos.db
+*.db
+subidas/
+page.tsx
+README.md
+Dockerfile
+.dockerignore
