@@ -28,6 +28,11 @@ import type {
   RespuestaServidor,
   Tarea,
   Usuario,
+  EstadoVivo,
+  HistorialVivo,
+  PaginaNotificaciones,
+  SesionVivoInfo,
+  UnidoVivo,
 } from "./tipos";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -388,3 +393,46 @@ export const adminEliminarRa = (id: number) => borrar(`/api/admin/ras/${id}`);
 export const adminUsuarios = () => peticion<UsuarioAdmin[]>("/api/admin/usuarios");
 export const adminEditarUsuario = (id: number, datos: { rol?: string; programa_id?: number | null }) =>
   enviar<UsuarioAdmin>("PATCH", `/api/admin/usuarios/${id}`, datos);
+
+// ---------- Clase en vivo (Sprint 7) ----------
+
+export const iniciarClaseVivo = (cuestionarioId: number, segundos: number) =>
+  post<SesionVivoInfo>(`/api/cuestionarios/${cuestionarioId}/vivo`, { segundos_por_pregunta: segundos });
+
+export const obtenerSesionVivo = (id: number) => peticion<SesionVivoInfo>(`/api/vivo/sesiones/${id}`);
+
+export const accionSesionVivo = (id: number, accion: string) =>
+  post<void>(`/api/vivo/sesiones/${id}/accion`, { accion });
+
+export const unirseClaseVivo = (pin: string, apodo: string) => post<UnidoVivo>("/api/vivo/unirse", { pin, apodo });
+
+/** Sondeo de respaldo. Con `participante` va como participante; sin él, el JWT guardado lo identifica como presentador. */
+export const estadoClaseVivo = (pin: string, participante?: string) =>
+  peticion<EstadoVivo>(`/api/vivo/${pin}/estado${participante ? `?participante=${encodeURIComponent(participante)}` : ""}`);
+
+export const responderClaseVivo = (pin: string, token: string, respuesta: string) =>
+  post<void>(`/api/vivo/${pin}/responder`, { token, respuesta });
+
+/** URL del WebSocket de la clase en vivo (el esquema ws/wss sigue al de la API). */
+export function urlWsVivo(pin: string, rol: "presentador" | "participante", credencial: string): string {
+  const base = API_URL.replace(/^http/, "ws");
+  const param = rol === "presentador" ? "token" : "participante";
+  return `${base}/ws/vivo/${pin}?${param}=${encodeURIComponent(credencial)}`;
+}
+
+export const historialClaseVivo = (cuestionarioId: number) =>
+  peticion<HistorialVivo[]>(`/api/cuestionarios/${cuestionarioId}/vivo`);
+
+export const descargarCsvVivo = (cuestionarioId: number) =>
+  descargarArchivo(`/api/cuestionarios/${cuestionarioId}/vivo.csv`, `clases_en_vivo_${cuestionarioId}.csv`);
+
+// ---------- Notificaciones (Sprint 7) ----------
+
+export const listarNotificaciones = (pagina = 1, porPagina = 20) =>
+  peticion<PaginaNotificaciones>(`/api/notificaciones?pagina=${pagina}&por_pagina=${porPagina}`);
+
+export const contarNotificaciones = () => peticion<{ no_leidas: number }>("/api/notificaciones/no-leidas");
+
+export const marcarNotificacionLeida = (id: number) => post<{ no_leidas: number }>(`/api/notificaciones/${id}/leer`);
+
+export const marcarTodasLeidas = () => post<{ no_leidas: number }>("/api/notificaciones/leer-todas");

@@ -13,6 +13,8 @@ from app.modelos import (
     Grupo,
     Intento,
     Matricula,
+    Notificacion,
+    ParticipanteVivo,
     Repaso,
     RespuestaSUS,
     Tarea,
@@ -165,6 +167,8 @@ def eliminar_cuenta(datos: EliminarCuentaIn, usuario: Usuario = Depends(usuario_
             archivos.append(ruta)
     db.flush()
     db.execute(delete(Repaso).where(Repaso.usuario_id == usuario.id))
+    db.execute(delete(Notificacion).where(Notificacion.usuario_id == usuario.id))
+    db.execute(update(ParticipanteVivo).where(ParticipanteVivo.usuario_id == usuario.id).values(usuario_id=None))
     db.execute(delete(Intento).where(Intento.usuario_id == usuario.id))
     db.execute(delete(RespuestaSUS).where(RespuestaSUS.usuario_id == usuario.id))
     # Estructura académica: matrículas, alertas y los grupos que dictaba (docente)

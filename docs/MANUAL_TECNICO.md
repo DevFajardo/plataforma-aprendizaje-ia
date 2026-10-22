@@ -8,7 +8,7 @@ flowchart TB
         N[Next.js 16 · App Router · Tailwind]
     end
     subgraph Servidor["Backend FastAPI"]
-        R[Routers: auth, procesar, cuestionarios,<br/>intentos, docente, comparar,<br/>medios, estadisticas, sus,<br/>admin, cursos, coordinacion]
+        R[Routers: auth, procesar, cuestionarios,<br/>intentos, docente, comparar,<br/>medios, estadisticas, sus,<br/>admin, cursos, coordinacion,<br/>vivo (HTTP + WebSocket), notificaciones]
         S[Seguridad: bcrypt + JWT]
         T[services/transcripcion]
         I[services/ia: generar_con_respaldo]
@@ -206,7 +206,7 @@ erDiagram
     }
 ```
 
-Tablas: `usuarios`, `videos`, `cuestionarios`, `preguntas`, `tareas`, `intentos`, `repasos`, `respuestas_sus` y, desde el Sprint 6, `facultades`, `programas`, `asignaturas`, `resultados_aprendizaje`, `asignatura_ra`, `grupos`, `matriculas` y `alertas_seguimiento`.
+Tablas: `usuarios`, `videos`, `cuestionarios`, `preguntas`, `tareas`, `intentos`, `repasos`, `respuestas_sus` y, desde el Sprint 6, `facultades`, `programas`, `asignaturas`, `resultados_aprendizaje`, `asignatura_ra`, `grupos`, `matriculas` y `alertas_seguimiento`; y, desde el Sprint 7, `sesiones_vivo`, `participantes_vivo`, `respuestas_vivo` y `notificaciones` (ver «Clase en vivo»). Las crea `create_all`; este sprint no añade columnas a tablas existentes.
 
 ### Estructura académica (Sprint 6)
 
@@ -365,6 +365,55 @@ Mide la **retención** del aprendizaje (post-test diferido).
 
 `segundos_generacion` se guarda cuando la tarea llega a `listo` (tiempo desde que se creó la tarea). El editor mide el **tiempo activo** (solo con la pestaña visible) y lo envía a `POST /tiempo-edicion` al guardar, cancelar, salir y cada 5 min. Para los cuestionarios con `estimacion_manual_min`: tiempo con la herramienta = `segundos_generacion + segundos_edicion`; ahorro % = (manual − herramienta) / manual × 100, calculado con los promedios (`estadisticas/yo` → `docente.tiempo`). Las copias creadas con «duplicar» parten de 0 s y sin estimación.
 
+### Clase en vivo (Sprint 7)
+
+Modo estilo Kahoot: el docente proyecta las preguntas y los participantes (con o sin cuenta) responden desde el celular.
+
+```mermaid
+erDiagram
+    CUESTIONARIOS ||--o{ SESIONES_VIVO : "se juega en"
+    SESIONES_VIVO ||--o{ PARTICIPANTES_VIVO : "reúne"
+    PARTICIPANTES_VIVO ||--o{ RESPUESTAS_VIVO : "responde"
+    USUARIOS |o--o{ PARTICIPANTES_VIVO : "usuario_id (opcional)"
+    USUARIOS ||--o{ NOTIFICACIONES : "recibe"
+    SESIONES_VIVO { int id PK  int cuestionario_id FK  int docente_id FK  string pin "6 dígitos, único entre activas"  string estado "lobby|pregunta|resultados_pregunta|finalizada"  int pregunta_actual  int segundos_por_pregunta "10-120"  datetime inicio_pregunta  datetime creada_en  datetime actividad_en  datetime finalizada_en }
+    PARTICIPANTES_VIVO { int id PK  int sesion_id FK  string apodo "UK por sesión"  int usuario_id FK "nulo si no inició sesión"  string token UK "reconexión"  int puntaje }
+    RESPUESTAS_VIVO { int id PK  int sesion_id FK  int participante_id FK  int pregunta_id  text respuesta  bool correcta "nulo en abiertas"  int ms_respuesta  int puntos }
+    NOTIFICACIONES { int id PK  int usuario_id FK  string tipo "publicado|repaso|alerta|clase_vivo"  string titulo  text mensaje  string enlace  bool leida  string clave "evita duplicados"  datetime creada_en }
+```
+
+**Arquitectura.** `services/vivo.py` mantiene el estado de cada sesión activa en memoria (`SesionMem`, con un `threading.RLock`) y lo persiste en la BD en cada transición, al unirse alguien y con cada respuesta; tras un reinicio del servidor, la sesión se reconstruye desde la BD al primer acceso. El **temporizador lo controla el servidor** (`asyncio.create_task` + `sleep`); el cliente solo dibuja la cuenta regresiva a partir de `restante_ms`. Cuando todos los participantes responden, la pregunta se cierra sin esperar. El servidor siempre envía el **estado completo** (snapshot), de modo que reconectar equivale a recibir de nuevo el estado actual.
+
+**Flujo de estados.** `lobby` → `pregunta` → `resultados_pregunta` → (siguiente) `pregunta` … → `finalizada`. Acciones del presentador: `iniciar`, `siguiente`, `saltar` (cierra la pregunta abierta o avanza) y `finalizar`.
+
+**Puntaje.** Correcta = `round(500 + 500 × tiempo_restante / tiempo_total)`; incorrecta o sin responder = 0; las preguntas abiertas se responden pero no puntúan (el presentador ve las respuestas como nube). Se admite 1,5 s de margen por latencia de red.
+
+**Endpoints.**
+
+| Método | Ruta | Permisos | Descripción |
+|---|---|---|---|
+| POST | `/api/cuestionarios/{id}/vivo` | docente dueño | Crea la sesión (`segundos_por_pregunta` 10–120, por defecto 30) y devuelve el PIN. Cualquier estado de publicación. |
+| GET | `/api/vivo/sesiones/{id}` | docente dueño | Datos de la sesión (PIN, estado). 410 si ya terminó. |
+| POST | `/api/vivo/sesiones/{id}/accion` | docente dueño | Controles por HTTP (respaldo): `iniciar`, `siguiente`, `saltar`, `finalizar`. |
+| POST | `/api/vivo/unirse` | público (con JWT vincula el usuario) | `{pin, apodo}` → token del participante. Apodo 2–20 caracteres, sin palabras ofensivas, único en la sesión (409). Máximo 200 participantes. |
+| GET | `/api/vivo/{pin}/estado` | participante (`?participante=token`), presentador (JWT) o público (datos mínimos) | Sondeo de respaldo. |
+| POST | `/api/vivo/{pin}/responder` | participante (token en el cuerpo) | Respuesta por HTTP (respaldo). |
+| WS | `/ws/vivo/{pin}?token=<JWT>` o `?participante=<token>` | docente dueño / participante | Tiempo real. Cierres: 4404 PIN inexistente, 4403 JWT que no es del dueño, 4401 sin credenciales válidas. |
+| GET | `/api/cuestionarios/{id}/vivo` | docente dueño | Historial: fecha, participantes, acierto promedio y % por pregunta. |
+| GET | `/api/cuestionarios/{id}/vivo.csv` | docente dueño | CSV (BOM UTF-8, protección de fórmulas): sesiones, preguntas y participantes. |
+
+**Protocolo WebSocket.** Cliente → servidor: `{"accion": "iniciar|siguiente|saltar|finalizar"}` (presentador), `{"accion": "responder", "respuesta": "..."}` (participante) y `{"accion": "ping"}`. Servidor → cliente: `{"tipo": "estado", ...}` (snapshot con `estado`, `pregunta` sin la respuesta correcta, `respondieron`, `restante_ms`, `participantes`, `resultados` solo tras el cierre, `ranking` top 5 y `yo` para el participante) y `{"tipo": "error", "mensaje": ...}`.
+
+**Reconexión y respaldo.** El cliente (`frontend/src/lib/vivo.ts`) guarda el token del participante en `localStorage` (`vivo:{pin}`), reintenta con *backoff* exponencial (0,5 s … 8 s) y, tras **3 fallos seguidos** del WebSocket, pasa a sondear `GET /api/vivo/{pin}/estado` cada 1,5 s; los controles y las respuestas viajan entonces por HTTP.
+
+**Seguridad y límites.** Las respuestas correctas (y la explicación) solo aparecen en el snapshot `resultados_pregunta` o `finalizada`; el sondeo público no revela ni la pregunta. Solo el docente dueño controla la sesión (JWT). Máximo 200 participantes. Una sesión sin actividad durante 2 h se finaliza sola (al consultarla y con un bucle de mantenimiento cada 5 min iniciado en el `lifespan`). Los participantes con cuenta reciben una notificación con su puesto al finalizar.
+
+**Despliegue.** El estado en memoria exige **un solo proceso** de uvicorn por instancia (sin `--workers` mayor que 1) y un servidor que admita WebSockets (Render lo admite); para que el navegador use `wss://`, `NEXT_PUBLIC_API_URL` debe ser `https://`.
+
+### Notificaciones en la app (Sprint 7)
+
+Modelo `Notificacion` (usuario, tipo, título, mensaje, enlace, leída, creada_en y `clave`, única por usuario, que evita duplicados). Se generan: **cuestionario publicado** en un grupo (a los matriculados, una vez por cuestionario); **repaso disponible** y **alerta temprana** (al consultar las notificaciones: el repaso cuando vence sin completarse; las alertas se calculan como máximo cada 2 min por docente con las reglas del Sprint 6); y **resultado de clase en vivo** (participantes con cuenta). Endpoints: `GET /api/notificaciones?pagina&por_pagina&solo_no_leidas`, `GET /api/notificaciones/no-leidas`, `POST /api/notificaciones/{id}/leer` y `POST /api/notificaciones/leer-todas`. Cada usuario solo accede a las suyas (404 si no lo son). El frontend sondea el contador cada 60 s (`CampanaNotificaciones.tsx`, sin WebSocket); el panel ocupa toda la pantalla en móvil y existe la página `/notificaciones`. Al eliminar la cuenta se borran sus notificaciones y sus participaciones en clases en vivo quedan anónimas.
+
 ## 6. Seguridad
 
 - **Contraseñas**: bcrypt con sal por contraseña (se limita a 72 bytes, el máximo de bcrypt).
@@ -401,6 +450,7 @@ cd backend
 - `tests/test_unitarias.py`: `extraer_video_id`, SUS, normalización, adaptador de IA (respaldo, reintentos) y selección de idioma de Whisper.
 - `tests/test_sprint5.py`: `identificar_video` (YouTube/Vimeo/inválidos), rechazo de transmisiones en vivo y de videos largos (con `yt_dlp` simulado), repaso diferido con fechas simuladas (se manipula `disponible_desde`), intento diferido sin retroalimentación, retención, modo control, duplicar, comparación (valores conocidos de media, desviación y d de Cohen), tiempo de edición y ahorro, consentimiento, mis datos, eliminación de cuenta, CSV de investigación y migración de una BD anterior.
 - `tests/test_sprint6.py`: roles y permisos (403 por rol), CRUD de la estructura académica, grupos y matrícula con código, visibilidad de cuestionarios por curso, RA y Bloom por pregunta, esquema de la IA con `nivel_bloom`, logro por RA con datos conocidos y semáforo, alcance del coordinador/admin, filtro por periodo, cada regla de alerta (y «atendida»), PDFs (`%PDF`) y migración de columnas.
+- `tests/test_sprint7.py` (46 pruebas): puntaje por tiempo, filtro de apodos, crear/unirse a una sesión (apodo duplicado, ofensivo, límite de participantes, vínculo con la cuenta), que no se filtre la respuesta correcta antes del cierre, flujo completo por `TestClient.websocket_connect` (presentador + 2 participantes: lobby → pregunta → respuestas → cierre → siguiente → abierta → podio), temporizador del servidor, reconexión con token y reconstrucción tras reinicio, permisos del WebSocket (4401/4403/4404) y de los controles, expiración a las 2 h, historial, CSV (BOM y fórmulas) y notificaciones (generación, lectura, paginación, privacidad). Las pruebas de WebSocket usan `with TestClient(app)` con el `lifespan` anulado para tener un único bucle de eventos.
 - `tests/test_api.py`: autenticación, procesamiento, visibilidad, intentos, edición, permisos, códigos, resultados/ganancia, CSV, medios, borrado de archivos, estadísticas y SUS.
 
 Frontend: `npm run lint` y `npm run build`.
@@ -426,7 +476,8 @@ plataforma-aprendizaje-ia/
 │   │   ├── seguridad.py       # bcrypt, JWT, dependencias de auth
 │   │   ├── schemas.py         # esquemas del adaptador de IA
 │   │   ├── schemas_api.py     # esquemas de la API
-│   │   ├── routers/           # auth, procesar, cuestionarios, intentos, docente, comparar, medios, estadisticas, sus, admin, cursos, coordinacion
+│   │   ├── schemas_vivo.py    # esquemas de la clase en vivo
+│   │   ├── routers/           # auth, procesar, cuestionarios, intentos, docente, comparar, medios, estadisticas, sus, admin, cursos, coordinacion, vivo, notificaciones
 │   │   └── services/
 │   │       ├── transcripcion.py
 │   │       ├── sus.py
@@ -434,6 +485,8 @@ plataforma-aprendizaje-ia/
 │   │       ├── repasos.py
 │   │       ├── logro.py         # logro por RA / Bloom / asignatura / tendencia
 │   │       ├── alertas.py       # alertas tempranas explicables
+│   │       ├── vivo.py          # clase en vivo: estado en memoria, temporizador, difusión WebSocket
+│   │       ├── notificaciones.py # creación sin duplicados y generación diferida
 │   │       ├── reportes_pdf.py  # reportes PDF institucionales (reportlab)
 │   │       └── ia/            # base, gemini, groq_llm, ollama, respaldo
 │   ├── scripts/crear_demo.py  # cuentas demo

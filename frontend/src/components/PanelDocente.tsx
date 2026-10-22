@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { duplicarCuestionario, editarCuestionario, listarGrupos, publicarCuestionario } from "@/lib/api";
+import { duplicarCuestionario, editarCuestionario, iniciarClaseVivo, listarGrupos, publicarCuestionario } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { CuestionarioDetalle, Grupo } from "@/lib/tipos";
 import { Alerta, Boton, BotonEnlace, Icono, Input, Insignia, Select, cx } from "./ui";
@@ -26,6 +26,8 @@ export default function PanelDocente({ cuestionario: c, onEditar, onPublicado, o
   const [copiado, setCopiado] = useState(false);
   const [estimacion, setEstimacion] = useState("");
   const [grupos, setGrupos] = useState<Grupo[]>([]);
+  const [segundosVivo, setSegundosVivo] = useState("30");
+  const [iniciandoVivo, setIniciandoVivo] = useState(false);
 
   useEffect(() => {
     if (!esDocente) return;
@@ -94,6 +96,19 @@ export default function PanelDocente({ cuestionario: c, onEditar, onPublicado, o
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
       setOcupado(false);
+    }
+  }
+
+  async function iniciarVivo() {
+    setError(null);
+    setIniciandoVivo(true);
+    try {
+      const segundos = Math.min(120, Math.max(10, Number(segundosVivo) || 30));
+      const sesion = await iniciarClaseVivo(c.id, segundos);
+      router.push(`/vivo/presentar/${sesion.id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo iniciar la clase en vivo.");
+      setIniciandoVivo(false);
     }
   }
 
@@ -246,12 +261,37 @@ export default function PanelDocente({ cuestionario: c, onEditar, onPublicado, o
         </div>
       </div>
 
+      <div className="flex flex-col gap-3 rounded-xl border border-borde bg-superficie-2/60 p-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="flex items-center gap-2 text-base font-bold">
+            <Icono nombre="vivo" /> Clase en vivo
+          </h3>
+          <p className="mt-1 text-sm text-suave">
+            Proyecta las preguntas en el salón y tus estudiantes responden desde el celular con un PIN, sin cuenta. Funciona con el cuestionario en cualquier estado.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-end">
+          <Input
+            etiqueta="Segundos por pregunta"
+            type="number"
+            min={10}
+            max={120}
+            value={segundosVivo}
+            onChange={(e) => setSegundosVivo(e.target.value)}
+            claseCampo="min-[480px]:w-40"
+          />
+          <Boton onClick={iniciarVivo} cargando={iniciandoVivo} disabled={c.num_preguntas === 0}>
+            <Icono nombre="play" /> Iniciar clase en vivo
+          </Boton>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:flex lg:flex-wrap">
         <Boton onClick={onEditar}>
           <Icono nombre="lapiz" /> Editar
         </Boton>
         <BotonEnlace href={`/cuestionarios/${c.id}/resultados`} variante="secundario">
-          <Icono nombre="promedio" /> Ver resultados
+          <Icono nombre="promedio" /> Ver resultados y sesiones en vivo
         </BotonEnlace>
         {c.modo === "aprendizaje" && (
           <Boton variante="secundario" onClick={crearControl} disabled={ocupado}>

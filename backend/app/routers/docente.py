@@ -30,6 +30,7 @@ from app.schemas_api import (
 )
 from app.seguridad import requiere_docente, usuario_actual
 from app.services.estadistica import datos_por_estudiante
+from app.services.notificaciones import notificar_publicacion
 
 router = APIRouter(prefix="/api", tags=["docente"])
 
@@ -127,6 +128,7 @@ def publicar(
         c.publicado_en = ahora()  # primera publicación
     if datos.estimacion_manual_min is not None:
         c.estimacion_manual_min = datos.estimacion_manual_min
+    notificar_publicacion(db, c)
     db.commit()
     return {"publicado": c.publicado, "codigo_compartir": c.codigo_compartir}
 

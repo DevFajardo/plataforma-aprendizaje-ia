@@ -33,6 +33,10 @@ const RUTAS = {
   mas: "M12 5v14M5 12h14",
   lapiz: "M4 20h4l10.5-10.5a2.1 2.1 0 00-3-3L5 17v3zM13.5 6.5l3 3",
   play: "M8 5v14l11-7L8 5z",
+  campana: "M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9zM13.7 21a2 2 0 01-3.4 0",
+  expandir: "M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3",
+  contraer: "M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3",
+  vivo: "M5.6 18.4a9 9 0 010-12.8m12.8 0a9 9 0 010 12.8M8.5 15.5a5 5 0 010-7m7 0a5 5 0 010 7M12 12h.01",
 } as const;
 
 export type NombreIcono = keyof typeof RUTAS;

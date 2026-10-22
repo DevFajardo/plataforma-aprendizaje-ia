@@ -3,11 +3,11 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.modelos import Cuestionario, Intento, Tarea, Usuario, Video
+from app.modelos import Cuestionario, Intento, ParticipanteVivo, RespuestaVivo, SesionVivo, Tarea, Usuario, Video
 from app.routers import procesar
 from app.schemas_api import CuestionarioDetalle, CuestionarioResumen, PreguntaOut, RepasoEstado
 from app.seguridad import usuario_actual
@@ -147,6 +147,11 @@ def borrar_cuestionario(db: Session, c: Cuestionario) -> Path | None:
     """
     video = c.video
     db.execute(update(Tarea).where(Tarea.cuestionario_id == c.id).values(cuestionario_id=None))
+    ids_vivo = list(db.scalars(select(SesionVivo.id).where(SesionVivo.cuestionario_id == c.id)))
+    if ids_vivo:  # clase en vivo: respuestas, participantes y sesiones
+        db.execute(delete(RespuestaVivo).where(RespuestaVivo.sesion_id.in_(ids_vivo)))
+        db.execute(delete(ParticipanteVivo).where(ParticipanteVivo.sesion_id.in_(ids_vivo)))
+        db.execute(delete(SesionVivo).where(SesionVivo.id.in_(ids_vivo)))
     db.delete(c)
     db.flush()
 

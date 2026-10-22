@@ -472,3 +472,98 @@ export interface Alerta {
   nivel: "alto" | "medio";
   motivos: { codigo: string; texto: string }[];
 }
+
+// ---------- Clase en vivo (Sprint 7) ----------
+
+export type EstadoSesionVivo = "lobby" | "pregunta" | "resultados_pregunta" | "finalizada";
+
+export interface SesionVivoInfo {
+  id: number;
+  cuestionario_id: number;
+  titulo: string;
+  pin: string;
+  estado: EstadoSesionVivo;
+  segundos_por_pregunta: number;
+  total_preguntas: number;
+}
+
+export interface UnidoVivo {
+  pin: string;
+  apodo: string;
+  token: string;
+}
+
+export interface PuestoVivo {
+  apodo: string;
+  puntos: number;
+  posicion: number;
+}
+
+export interface ResultadosPreguntaVivo {
+  distribucion: { opcion: string; cantidad: number; correcta: boolean }[];
+  correcta: string | null;
+  explicacion: string;
+  respondieron: number;
+  abiertas: string[];
+}
+
+/** Foto del estado de la sesión que el servidor envía por WebSocket (o por sondeo HTTP). */
+export interface EstadoVivo {
+  tipo: "estado";
+  rol: "presentador" | "participante" | "publico";
+  pin: string;
+  titulo: string;
+  estado: EstadoSesionVivo;
+  indice: number;
+  total_preguntas: number;
+  segundos: number;
+  restante_ms: number;
+  num_participantes: number;
+  participantes: string[];
+  respondieron: number;
+  pregunta: { id: number; tipo: string; enunciado: string; opciones: string[] } | null;
+  resultados: ResultadosPreguntaVivo | null;
+  ranking: PuestoVivo[];
+  yo?: {
+    apodo: string;
+    puntos: number;
+    posicion: number;
+    respondio: boolean;
+    mi_respuesta: string | null;
+    correcta: boolean | null;
+    puntos_ganados: number | null;
+  };
+  /** Marca de tiempo local (performance.now) en que llegó este estado; sirve para la cuenta regresiva. */
+  _t?: number;
+}
+
+export interface HistorialVivo {
+  id: number;
+  creada_en: string;
+  finalizada_en: string | null;
+  estado: EstadoSesionVivo;
+  pin: string;
+  participantes: number;
+  promedio_acierto: number | null;
+  preguntas: { pregunta_id: number; orden: number; enunciado: string; tipo: string; respuestas: number; porcentaje_acierto: number | null }[];
+}
+
+// ---------- Notificaciones (Sprint 7) ----------
+
+export interface Notificacion {
+  id: number;
+  tipo: "publicado" | "repaso" | "alerta" | "clase_vivo" | string;
+  titulo: string;
+  mensaje: string;
+  enlace: string;
+  leida: boolean;
+  creada_en: string;
+}
+
+export interface PaginaNotificaciones {
+  items: Notificacion[];
+  total: number;
+  pagina: number;
+  por_pagina: number;
+  no_leidas: number;
+}

@@ -511,3 +511,27 @@ class SusResumen(BaseModel):
     interpretacion_promedio: str | None = None
     distribucion: dict[str, int]
     promedio_por_item: list[float]
+
+
+# ---------- Notificaciones (Sprint 7) ----------
+
+class NotificacionOut(BaseModel):
+    id: int
+    tipo: str
+    titulo: str
+    mensaje: str
+    enlace: str
+    leida: bool
+    creada_en: FechaUTC
+
+
+class NotificacionesPagina(BaseModel):
+    items: list[NotificacionOut]
+    total: int
+    pagina: int
+    por_pagina: int
+    no_leidas: int
+
+
+class ContadorNotificaciones(BaseModel):
+    no_leidas: int

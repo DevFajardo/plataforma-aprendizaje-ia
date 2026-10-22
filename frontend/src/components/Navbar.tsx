@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import CampanaNotificaciones from "./CampanaNotificaciones";
 import MarcaInstitucional from "./MarcaInstitucional";
 import { Icono, cx } from "./ui";
 
@@ -114,8 +115,13 @@ export default function Navbar() {
             </Link>
           ))}
 
+          {usuario && (
+            <div className="ml-3">
+              <CampanaNotificaciones />
+            </div>
+          )}
           {usuario ? (
-            <div ref={cajaUsuario} className="relative ml-3">
+            <div ref={cajaUsuario} className="relative ml-1">
               <button
                 type="button"
                 aria-haspopup="menu"
@@ -168,18 +174,21 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Botón hamburguesa (móvil y tablet) */}
-        <button
-          ref={botonMenu}
-          type="button"
-          aria-expanded={menuAbierto}
-          aria-controls="menu-movil"
-          aria-label={menuAbierto ? "Cerrar menú" : "Abrir menú"}
-          onClick={() => setMenuEn(menuAbierto ? null : ruta)}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/30 transition hover:bg-white/10 xl:hidden"
-        >
-          <Icono nombre={menuAbierto ? "cerrar" : "menu"} tamano={24} />
-        </button>
+        {/* Campana y botón hamburguesa (móvil y tablet) */}
+        <div className="flex items-center gap-2 xl:hidden">
+          {usuario && <CampanaNotificaciones />}
+          <button
+            ref={botonMenu}
+            type="button"
+            aria-expanded={menuAbierto}
+            aria-controls="menu-movil"
+            aria-label={menuAbierto ? "Cerrar menú" : "Abrir menú"}
+            onClick={() => setMenuEn(menuAbierto ? null : ruta)}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/30 transition hover:bg-white/10"
+          >
+            <Icono nombre={menuAbierto ? "cerrar" : "menu"} tamano={24} />
+          </button>
+        </div>
       </nav>
 
       {/* Panel desplegable a pantalla completa (móvil y tablet) */}

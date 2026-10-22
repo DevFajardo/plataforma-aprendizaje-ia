@@ -125,6 +125,26 @@ Al publicar por primera vez puedes indicar cuántos minutos te habría tomado cr
 ### Panel del docente
 Además de lo del estudiante, el **Panel** muestra tus cuestionarios publicados, los estudiantes únicos, los intentos recibidos, el promedio general y una tabla con intentos y promedio por cuestionario.
 
+### Clase en vivo
+
+Convierte cualquier cuestionario tuyo (publicado o no) en una dinámica de aula estilo Kahoot.
+
+1. Abre el cuestionario y, en el panel del docente, elige los **segundos por pregunta** (10 a 120) y pulsa **Iniciar clase en vivo**. Se abre la vista del presentador, pensada para el proyector (usa **Pantalla completa**).
+2. Los estudiantes **no necesitan cuenta**: escanean el **código QR** o entran a `/vivo` en su celular, escriben el **PIN de 6 dígitos** y un **apodo** (2 a 20 caracteres, sin palabras ofensivas ni repetidos). Si ya iniciaron sesión, su participación queda vinculada a su cuenta. Caben hasta 200 personas.
+3. Cuando aparezcan todos los apodos, pulsa **Iniciar**. En cada pregunta verás el temporizador circular y cuántos han respondido; la pregunta se cierra sola al acabarse el tiempo o cuando todos responden. Con **Saltar al resultado** la cierras antes.
+4. Al cerrar, la pantalla muestra cuántos eligieron cada opción (la correcta resaltada) y a los **5 mejores**. Las preguntas abiertas no puntúan: verás las respuestas como una nube de palabras.
+5. **Siguiente pregunta** continúa; tras la última aparece el **podio final** animado. **Finalizar clase** la termina en cualquier momento.
+
+El puntaje premia la rapidez: una respuesta correcta vale entre 500 y 1000 puntos (500 + 500 × tiempo restante ÷ tiempo total); una incorrecta, 0. Si un celular pierde la conexión, se reconecta solo y recupera la pregunta en curso; si el tiempo real falla, la aplicación cambia sola a un modo de respaldo. Las sesiones abandonadas se cierran solas a las 2 horas.
+
+En **Ver resultados** → pestaña **Sesiones en vivo** está el historial (fecha, participantes, acierto promedio y % de acierto por pregunta) y el botón **Descargar CSV de sesiones**.
+
+**Para participantes** (celular): la pregunta aparece con botones grandes de colores, **formas y letras** (triángulo A, rombo B, círculo C, cuadrado D) para no depender solo del color. Al cerrarse la pregunta ves si acertaste, los puntos ganados y tu puesto; al final, el podio con tu posición. Quienes entraron con su cuenta reciben una notificación con su resultado.
+
+### Notificaciones
+
+La **campana** de la barra superior muestra cuántas notificaciones no has leído (se actualiza cada minuto). Al pulsarla se abre un panel (a pantalla completa en el celular) con las más recientes; **Marcar todas como leídas** las limpia y **Ver todas** abre la página `/notificaciones`, con todas paginadas. Recibes avisos cuando: se publica un cuestionario en un curso donde estás matriculado, tienes un repaso diferido disponible, termina una clase en vivo en la que participaste con tu cuenta y, si eres docente, aparece una nueva alerta temprana en uno de tus grupos.
+
 ## 7b. Guía para coordinadores
 
 Si tu cuenta es de **coordinador**, el administrador te asigna un programa y verás **Coordinación** en el menú:
@@ -187,6 +207,8 @@ Estos derechos (conocer, actualizar, rectificar, suprimir y revocar) están desc
 
 **¿Es obligatorio participar en el estudio?** No. Solo es obligatorio aceptar la política de datos para tener cuenta.
 
+**¿Mis estudiantes necesitan cuenta para la clase en vivo?** No: basta el PIN y un apodo. Solo quienes inicien sesión antes de unirse reciben la notificación con su resultado.
+
 **¿Puedo borrar un cuestionario?** Sí, desde **Mis cuestionarios** → **Eliminar** y confirmando en la propia tarjeta. Se borran también sus intentos y, si era un archivo subido, el archivo.
 
 ## 11. Solución de problemas
@@ -195,6 +217,8 @@ Estos derechos (conocer, actualizar, rectificar, suprimir y revocar) están desc
 |---|---|
 | «No se pudo conectar con el servidor» | El backend está apagado o `NEXT_PUBLIC_API_URL` apunta a otra dirección. Enciéndelo o revisa la URL. |
 | «Sesión no válida o expirada» | Vuelve a iniciar sesión. |
+| En la clase en vivo aparece «Conexión de respaldo activa» | El tiempo real (WebSocket) no pudo conectarse y se usa un sondeo cada 1,5 s; la clase sigue funcionando, con algo más de retraso. Suele deberse a un proxy o red que bloquea WebSockets. |
+| «No hay una clase en vivo con ese PIN» | El PIN está mal escrito, la clase ya terminó o pasaron 2 horas sin actividad. Pide al docente que inicie una nueva. |
 | «No se procesan transmisiones en vivo…» | El video es una transmisión en vivo o un estreno programado. Usa un video ya publicado. |
 | El video supera el máximo permitido | Dura más de 180 minutos. Usa uno más corto o súbelo recortado. |
 | El video de Vimeo falla | Debe ser público o no listado (con el enlace completo, incluida la clave). Los videos privados o con DRM no se pueden descargar. |

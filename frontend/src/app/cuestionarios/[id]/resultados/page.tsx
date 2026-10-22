@@ -13,10 +13,12 @@ import {
   Insignia,
   Metrica,
   Pagina,
+  Pestanas,
   Tarjeta,
   TituloSeccion,
   type TonoBarra,
 } from "@/components/ui";
+import HistorialVivo from "@/components/HistorialVivo";
 import { descargarCsv, descargarPdfCuestionario, obtenerResultados } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import { formatearFecha } from "@/lib/fechas";
@@ -135,6 +137,7 @@ function Contenido() {
   const [datos, setDatos] = useState<Resultados | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [descargando, setDescargando] = useState(false);
+  const [pestana, setPestana] = useState<"resultados" | "vivo">("resultados");
 
   useEffect(() => {
     if (!usuario) return;
@@ -196,6 +199,18 @@ function Contenido() {
             }
           />
 
+          <Pestanas
+            etiqueta="Secciones de resultados"
+            items={[
+              { id: "resultados", texto: "Resultados" },
+              { id: "vivo", texto: "Sesiones en vivo" },
+            ]}
+            activa={pestana}
+            onCambiar={setPestana}
+          >
+          {pestana === "vivo" ? (
+            <HistorialVivo cuestionarioId={Number(id)} />
+          ) : (
           <div className="flex flex-col gap-8">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
               <Metrica icono="intentos" titulo="Intentos finalizados" valor={String(datos.total_intentos)} />
@@ -341,6 +356,8 @@ function Contenido() {
               </>
             )}
           </div>
+          )}
+          </Pestanas>
         </>
       )}
     </Pagina>

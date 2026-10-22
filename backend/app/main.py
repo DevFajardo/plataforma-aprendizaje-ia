@@ -1,4 +1,5 @@
 """API FastAPI de la Plataforma de Aprendizaje Activo con IA."""
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -21,8 +22,11 @@ from app.routers import (
     intentos,
     medios,
     procesar,
+    notificaciones,
     sus,
+    vivo,
 )
+from app.services import vivo as servicio_vivo
 from app.services.ia import proveedores_configurados
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -45,7 +49,9 @@ def _cerrar_tareas_huerfanas() -> None:
 async def lifespan(_: FastAPI):
     crear_tablas()
     _cerrar_tareas_huerfanas()
+    mantenimiento = asyncio.create_task(servicio_vivo.bucle_mantenimiento())  # cierra clases en vivo abandonadas
     yield
+    mantenimiento.cancel()
 
 
 app = FastAPI(title="Plataforma de Aprendizaje Activo con IA", lifespan=lifespan)
@@ -68,6 +74,8 @@ app.include_router(sus.router)
 app.include_router(admin.router)
 app.include_router(cursos.router)
 app.include_router(coordinacion.router)
+app.include_router(vivo.router)
+app.include_router(notificaciones.router)
 
 
 @app.get("/api/salud")

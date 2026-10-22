@@ -185,6 +185,34 @@ h1, h2, h3, p, li, dd, dt, label, summary, a {
     transform: translateX(100%);
   }
 }
+@keyframes crecer {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes rebote {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-podio {
+  transform-origin: bottom;
+  animation: crecer 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-rebote {
+  animation: rebote 0.5s ease-out both;
+}
 .anim-aparecer {
   animation: aparecer 0.35s ease-out both;
 }

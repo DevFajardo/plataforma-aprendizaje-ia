@@ -282,3 +282,67 @@ class AlertaSeguimiento(Base):
     motivos: Mapped[str] = mapped_column(String(200))  # códigos separados por coma
     nota: Mapped[str] = mapped_column(Text, default="")
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+
+
+# ---------- Sprint 7: clase en vivo y notificaciones ----------
+
+class SesionVivo(Base):
+    """Sesión de clase en vivo (estilo Kahoot) lanzada por un docente desde uno de sus cuestionarios."""
+
+    __tablename__ = "sesiones_vivo"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cuestionario_id: Mapped[int] = mapped_column(ForeignKey("cuestionarios.id", ondelete="CASCADE"), index=True)
+    docente_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), index=True)
+    pin: Mapped[str] = mapped_column(String(6), index=True)  # único solo entre sesiones activas
+    estado: Mapped[str] = mapped_column(String(25), default="lobby")  # lobby | pregunta | resultados_pregunta | finalizada
+    pregunta_actual: Mapped[int] = mapped_column(Integer, default=-1)  # índice en el orden del cuestionario
+    segundos_por_pregunta: Mapped[int] = mapped_column(Integer, default=30)
+    inicio_pregunta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    creada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+    actividad_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+    finalizada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    cuestionario: Mapped[Cuestionario] = relationship()
+    participantes: Mapped[list["ParticipanteVivo"]] = relationship(cascade="all, delete-orphan")
+
+
+class ParticipanteVivo(Base):
+    __tablename__ = "participantes_vivo"
+    __table_args__ = (UniqueConstraint("sesion_id", "apodo"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sesion_id: Mapped[int] = mapped_column(ForeignKey("sesiones_vivo.id", ondelete="CASCADE"), index=True)
+    apodo: Mapped[str] = mapped_column(String(20))
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True, default=lambda: secrets.token_urlsafe(24))
+    puntaje: Mapped[int] = mapped_column(Integer, default=0)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+
+
+class RespuestaVivo(Base):
+    __tablename__ = "respuestas_vivo"
+    __table_args__ = (UniqueConstraint("participante_id", "pregunta_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sesion_id: Mapped[int] = mapped_column(ForeignKey("sesiones_vivo.id", ondelete="CASCADE"), index=True)
+    participante_id: Mapped[int] = mapped_column(ForeignKey("participantes_vivo.id", ondelete="CASCADE"), index=True)
+    pregunta_id: Mapped[int] = mapped_column(Integer, index=True)
+    respuesta: Mapped[str] = mapped_column(Text)
+    correcta: Mapped[bool | None] = mapped_column(Boolean, nullable=True)  # nulo en preguntas abiertas
+    ms_respuesta: Mapped[int] = mapped_column(Integer, default=0)
+    puntos: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Notificacion(Base):
+    __tablename__ = "notificaciones"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), index=True)
+    tipo: Mapped[str] = mapped_column(String(30))  # publicado | repaso | alerta | clase_vivo
+    titulo: Mapped[str] = mapped_column(String(150))
+    mensaje: Mapped[str] = mapped_column(Text, default="")
+    enlace: Mapped[str] = mapped_column(String(200), default="")
+    leida: Mapped[bool] = mapped_column(Boolean, default=False)
+    clave: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)  # evita duplicados
+    creada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)

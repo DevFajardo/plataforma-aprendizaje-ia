@@ -12,6 +12,8 @@ from app import main
 from app.config import settings
 from app.db import Base, get_db
 from app.routers import procesar
+from app.services import notificaciones as notif_servicio
+from app.services import vivo as servicio_vivo
 from app.schemas import Pregunta, ResultadoIA, Segmento, Transcripcion
 
 PASSWORD = "Clave12345"
@@ -58,6 +60,10 @@ def cliente(sesion_factory, tmp_path, monkeypatch):
     # Las tareas en segundo plano abren su propia sesión: deben usar la BD de prueba
     monkeypatch.setattr(procesar, "SessionLocal", sesion_factory)
     monkeypatch.setattr(procesar, "CARPETA_SUBIDAS", tmp_path / "subidas")
+    # Clase en vivo: la BD de prueba, sin estado de otras pruebas
+    monkeypatch.setattr(servicio_vivo, "SessionLocal", sesion_factory)
+    servicio_vivo._sesiones.clear()
+    notif_servicio._ultimo_calculo_alertas.clear()
     monkeypatch.setattr(settings, "secret_key", "clave-solo-para-pruebas-0123456789-abcdef")
     monkeypatch.setattr(settings, "limite_diario_procesamientos", 1000)
 
