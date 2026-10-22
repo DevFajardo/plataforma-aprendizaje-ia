@@ -46,6 +46,7 @@ class UsuarioOut(BaseModel):
     nombre: str
     email: str
     rol: str
+    programa_id: int | None = None
     acepta_tratamiento_datos: bool = False
     consentimiento_investigacion: bool = False
 
@@ -97,6 +98,8 @@ class PreguntaOut(BaseModel):
     # Solo se rellenan para el creador
     respuesta_correcta: str | None = None
     explicacion: str | None = None
+    ra_id: int | None = None
+    nivel_bloom: str | None = None
 
 
 class RepasoEstado(BaseModel):
@@ -128,6 +131,9 @@ class CuestionarioDetalle(BaseModel):
     segundos_edicion: int | None = None
     estimacion_manual_min: int | None = None
     publicado_en: FechaUTC | None = None
+    grupo_id: int | None = None
+    grupo_nombre: str | None = None
+    asignatura_nombre: str | None = None
     preguntas: list[PreguntaOut]
 
 
@@ -210,6 +216,7 @@ class RepasoOut(BaseModel):
 
 class PublicarIn(BaseModel):
     publicado: bool
+    grupo_id: int | None = None  # opcional: asigna el cuestionario a uno de los grupos del docente al publicar
     estimacion_manual_min: int | None = Field(default=None, ge=1, le=100000)
 
 
@@ -237,6 +244,7 @@ class CuestionarioEditarIn(BaseModel):
     # Admiten null explícito (quitar el repaso / la estimación): se distingue con model_fields_set
     repaso_dias: int | None = None
     estimacion_manual_min: int | None = Field(default=None, ge=1, le=100000)
+    grupo_id: int | None = None  # null explícito = quitar del grupo
 
     @field_validator("repaso_dias")
     @classmethod
@@ -260,6 +268,8 @@ class PreguntaIn(BaseModel):
     respuesta_correcta: str = Field(min_length=1, max_length=5000)
     explicacion: str = Field(default="", max_length=5000)
     marca_tiempo: str = Field(default="", max_length=20)
+    ra_id: int | None = None
+    nivel_bloom: Literal["recordar", "comprender", "aplicar", "analizar", "evaluar", "crear"] | None = None
 
     @model_validator(mode="after")
     def _validar(self):
@@ -320,6 +330,8 @@ class PreguntaResultado(BaseModel):
     enunciado: str
     num_respuestas: int
     porcentaje_acierto: float | None = None  # None en preguntas abiertas
+    ra_codigo: str | None = None
+    nivel_bloom: str | None = None
     respuestas_abiertas: list[RespuestaAbiertaOut] = []
 
 

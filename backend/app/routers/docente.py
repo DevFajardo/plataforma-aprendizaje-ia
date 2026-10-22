@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.modelos import Cuestionario, Intento, Pregunta, Usuario, ahora, generar_codigo
+from app.modelos import Cuestionario, Grupo, Intento, Pregunta, Usuario, ahora, generar_codigo
 from app.schemas_api import (
     CompartidoOut,
     CuestionarioEditarIn,
@@ -61,7 +61,32 @@ def _a_salida(p: Pregunta) -> PreguntaOut:
         marca_tiempo=p.marca_tiempo,
         respuesta_correcta=p.respuesta_correcta,
         explicacion=p.explicacion,
+        ra_id=p.ra_id,
+        nivel_bloom=p.nivel_bloom,
     )
+
+
+def grupo_propio(db: Session, grupo_id: int, docente: Usuario) -> Grupo:
+    g = db.get(Grupo, grupo_id)
+    if g is None:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado.")
+    if g.docente_id != docente.id:
+        raise HTTPException(status_code=403, detail="Ese grupo pertenece a otro docente.")
+    return g
+
+
+def _ras_permitidos(c: Cuestionario) -> set[int]:
+    """Resultados de aprendizaje que se pueden asociar a las preguntas: los de la asignatura del grupo."""
+    return {r.id for r in c.grupo.asignatura.resultados} if c.grupo_id and c.grupo else set()
+
+
+def _validar_ra(c: Cuestionario, ra_id: int | None) -> None:
+    if ra_id is None:
+        return
+    if not c.grupo_id:
+        raise HTTPException(status_code=400, detail="Asigna primero el cuestionario a un grupo para elegir un resultado de aprendizaje.")
+    if ra_id not in _ras_permitidos(c):
+        raise HTTPException(status_code=400, detail="Ese resultado de aprendizaje no pertenece a la asignatura del grupo.")
 
 
 def _aplicar(p: Pregunta, datos: PreguntaIn) -> None:
@@ -71,9 +96,20 @@ def _aplicar(p: Pregunta, datos: PreguntaIn) -> None:
     p.respuesta_correcta = datos.respuesta_correcta
     p.explicacion = datos.explicacion
     p.marca_tiempo = datos.marca_tiempo
+    p.ra_id = datos.ra_id
+    p.nivel_bloom = datos.nivel_bloom
 
 
 # ---------- Publicar y compartir ----------
+
+def _asignar_grupo(c: Cuestionario, grupo_id: int | None) -> None:
+    """Asigna (o quita) el grupo y limpia los RA de las preguntas que ya no correspondan a la asignatura."""
+    if c.grupo_id == grupo_id:
+        return
+    c.grupo_id = grupo_id
+    for p in c.preguntas:
+        p.ra_id = None
+
 
 @router.post("/cuestionarios/{cuestionario_id}/publicar")
 def publicar(
@@ -83,6 +119,9 @@ def publicar(
     db: Session = Depends(get_db),
 ):
     c = _propio(db, cuestionario_id, docente)
+    if datos.grupo_id is not None:
+        grupo_propio(db, datos.grupo_id, docente)
+        _asignar_grupo(c, datos.grupo_id)
     c.publicado = datos.publicado
     if datos.publicado and c.publicado_en is None:
         c.publicado_en = ahora()  # primera publicación
@@ -126,6 +165,7 @@ def duplicar(
         publicado=False,
         modo=datos.modo,
         repaso_dias=c.repaso_dias,
+        grupo_id=c.grupo_id,
         preguntas=[
             Pregunta(
                 orden=p.orden,
@@ -135,6 +175,8 @@ def duplicar(
                 respuesta_correcta=p.respuesta_correcta,
                 explicacion=p.explicacion,
                 marca_tiempo=p.marca_tiempo,
+                ra_id=p.ra_id,
+                nivel_bloom=p.nivel_bloom,
             )
             for p in c.preguntas
         ],
@@ -183,6 +225,10 @@ def editar_cuestionario(
         c.repaso_dias = datos.repaso_dias
     if "estimacion_manual_min" in datos.model_fields_set:
         c.estimacion_manual_min = datos.estimacion_manual_min
+    if "grupo_id" in datos.model_fields_set:
+        if datos.grupo_id is not None:
+            grupo_propio(db, datos.grupo_id, docente)
+        _asignar_grupo(c, datos.grupo_id)
     db.commit()
     return {
         "titulo": c.titulo,
@@ -190,7 +236,24 @@ def editar_cuestionario(
         "ideas_clave": json.loads(c.ideas_clave_json),
         "repaso_dias": c.repaso_dias,
         "estimacion_manual_min": c.estimacion_manual_min,
+        "grupo_id": c.grupo_id,
     }
+
+
+@router.get("/cuestionarios/{cuestionario_id}/ras")
+def ras_del_cuestionario(
+    cuestionario_id: int,
+    docente: Usuario = Depends(requiere_docente),
+    db: Session = Depends(get_db),
+):
+    """Resultados de aprendizaje elegibles para las preguntas (los de la asignatura del grupo del cuestionario)."""
+    c = _propio(db, cuestionario_id, docente)
+    if not c.grupo_id:
+        return []
+    return [
+        {"id": r.id, "codigo": r.codigo, "descripcion": r.descripcion}
+        for r in sorted(c.grupo.asignatura.resultados, key=lambda r: r.codigo)
+    ]
 
 
 @router.put("/preguntas/{pregunta_id}", response_model=PreguntaOut)
@@ -201,6 +264,7 @@ def editar_pregunta(
     db: Session = Depends(get_db),
 ):
     p = _pregunta_propia(db, pregunta_id, docente)
+    _validar_ra(p.cuestionario, datos.ra_id)
     _aplicar(p, datos)
     db.commit()
     return _a_salida(p)
@@ -214,6 +278,7 @@ def agregar_pregunta(
     db: Session = Depends(get_db),
 ):
     c = _propio(db, cuestionario_id, docente)
+    _validar_ra(c, datos.ra_id)
     p = Pregunta(cuestionario_id=c.id, orden=max((x.orden for x in c.preguntas), default=-1) + 1)
     _aplicar(p, datos)
     db.add(p)
@@ -354,6 +419,7 @@ def _calcular_resultados(db: Session, c: Cuestionario) -> ResultadosOut:
             por_pregunta.setdefault(r["pregunta_id"], []).append((u.nombre, r))
 
     preguntas: list[PreguntaResultado] = []
+    ra_codigos = {r.id: r.codigo for r in c.grupo.asignatura.resultados} if c.grupo_id and c.grupo else {}
     for p in c.preguntas:
         resp = por_pregunta.get(p.id, [])
         if p.tipo == "abierta":
@@ -377,6 +443,8 @@ def _calcular_resultados(db: Session, c: Cuestionario) -> ResultadosOut:
                     enunciado=p.enunciado,
                     num_respuestas=len(resp),
                     porcentaje_acierto=round(100 * aciertos / len(resp), 1) if resp else 0.0,
+                    ra_codigo=ra_codigos.get(p.ra_id),
+                    nivel_bloom=p.nivel_bloom,
                 )
             )
 

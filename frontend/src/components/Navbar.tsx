@@ -12,16 +12,28 @@ interface Enlace {
   texto: string;
 }
 
-const ENLACES: Enlace[] = [
-  { href: "/panel", texto: "Panel" },
-  { href: "/", texto: "Generar" },
-  { href: "/cuestionarios", texto: "Mis cuestionarios" },
-  { href: "/unirse", texto: "Unirse" },
-  { href: "/historial", texto: "Historial" },
-  { href: "/encuesta", texto: "Encuesta" },
-];
+const PANEL: Enlace = { href: "/panel", texto: "Panel" };
+const GENERAR: Enlace = { href: "/", texto: "Generar" };
+const CUESTIONARIOS: Enlace = { href: "/cuestionarios", texto: "Mis cuestionarios" };
+const UNIRSE: Enlace = { href: "/unirse", texto: "Unirse" };
+const HISTORIAL: Enlace = { href: "/historial", texto: "Historial" };
+const ENCUESTA: Enlace = { href: "/encuesta", texto: "Encuesta" };
 
-const ROL: Record<string, string> = { docente: "Docente", estudiante: "Estudiante" };
+/** Enlaces del menú según el rol del usuario. */
+function enlacesPorRol(rol: string): Enlace[] {
+  switch (rol) {
+    case "docente":
+      return [PANEL, GENERAR, CUESTIONARIOS, { href: "/cursos", texto: "Cursos" }, UNIRSE, HISTORIAL, ENCUESTA, { href: "/comparar", texto: "Comparar" }];
+    case "coordinador":
+      return [PANEL, { href: "/coordinacion", texto: "Coordinación" }, ENCUESTA];
+    case "admin":
+      return [PANEL, { href: "/admin", texto: "Admin" }, { href: "/coordinacion", texto: "Coordinación" }, { href: "/cursos", texto: "Cursos" }, ENCUESTA];
+    default:
+      return [PANEL, GENERAR, CUESTIONARIOS, { href: "/mis-cursos", texto: "Mis cursos" }, UNIRSE, HISTORIAL, ENCUESTA];
+  }
+}
+
+const ROL: Record<string, string> = { docente: "Docente", estudiante: "Estudiante", coordinador: "Coordinador", admin: "Administrador" };
 
 export default function Navbar() {
   const { usuario, logout } = useAuth();
@@ -75,9 +87,7 @@ export default function Navbar() {
     return ruta.startsWith(href) || (href === "/unirse" && ruta.startsWith("/c/"));
   }
 
-  const enlaces: Enlace[] = usuario
-    ? [...ENLACES, ...(usuario.rol === "docente" ? [{ href: "/comparar", texto: "Comparar" }] : [])]
-    : [{ href: "/", texto: "Inicio" }];
+  const enlaces: Enlace[] = usuario ? enlacesPorRol(usuario.rol) : [{ href: "/", texto: "Inicio" }];
 
   const claseEnlace = (href: string, movil: boolean) =>
     cx(

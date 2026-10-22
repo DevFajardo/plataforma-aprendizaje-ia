@@ -15,6 +15,8 @@ cd backend
 
 `crear_demo.py` crea `docente@demo.com` y `estudiante@demo.com` (contraseña `Demo12345`) si no existen. Es seguro ejecutarlo varias veces.
 
+Para cargar la estructura académica de ejemplo (facultad, programa, asignaturas, resultados de aprendizaje, `coordinador@demo.com`, `admin@demo.com` y un grupo demo) ejecuta también `scripts\sembrar_estructura.py` (idempotente; en Render: `python scripts/sembrar_estructura.py`).
+
 ### 2. Preparar el frontend
 
 Para la demo es mejor la versión de producción (más rápida):

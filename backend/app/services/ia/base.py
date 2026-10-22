@@ -35,6 +35,7 @@ REGLAS:
 - Mezcla los tipos de pregunta: "opcion_multiple" (4 opciones), "verdadero_falso" (opciones ["Verdadero","Falso"]) y "abierta" (opciones vacías; respuesta_correcta es una respuesta modelo).
 - En preguntas de opción múltiple y verdadero/falso, "respuesta_correcta" debe coincidir EXACTAMENTE con el texto de una de las opciones.
 - Cada pregunta debe incluir "explicacion" (por qué es correcta, según el video) y "marca_tiempo" en formato mm:ss, tomada de las marcas [mm:ss] de la transcripción donde se trata el tema.
+- Clasifica cada pregunta en "nivel_bloom" según la taxonomía de Bloom revisada, usando exactamente uno de: "recordar", "comprender", "aplicar", "analizar", "evaluar", "crear".
 
 TRANSCRIPCIÓN:
 {transcripcion_texto}

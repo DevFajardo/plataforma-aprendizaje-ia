@@ -9,7 +9,20 @@ from sqlalchemy import update
 from app.config import settings
 from app.db import SessionLocal, crear_tablas
 from app.modelos import Tarea
-from app.routers import auth, comparar, cuestionarios, docente, estadisticas, intentos, medios, procesar, sus
+from app.routers import (
+    admin,
+    auth,
+    comparar,
+    coordinacion,
+    cuestionarios,
+    cursos,
+    docente,
+    estadisticas,
+    intentos,
+    medios,
+    procesar,
+    sus,
+)
 from app.services.ia import proveedores_configurados
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -52,6 +65,9 @@ app.include_router(comparar.router)
 app.include_router(medios.router)
 app.include_router(estadisticas.router)
 app.include_router(sus.router)
+app.include_router(admin.router)
+app.include_router(cursos.router)
+app.include_router(coordinacion.router)
 
 
 @app.get("/api/salud")

@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { duplicarCuestionario, editarCuestionario, publicarCuestionario } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { duplicarCuestionario, editarCuestionario, listarGrupos, publicarCuestionario } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { CuestionarioDetalle } from "@/lib/tipos";
+import type { CuestionarioDetalle, Grupo } from "@/lib/tipos";
 import { Alerta, Boton, BotonEnlace, Icono, Input, Insignia, Select, cx } from "./ui";
 
 interface Props {
@@ -25,6 +25,26 @@ export default function PanelDocente({ cuestionario: c, onEditar, onPublicado, o
   const [error, setError] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [estimacion, setEstimacion] = useState("");
+  const [grupos, setGrupos] = useState<Grupo[]>([]);
+
+  useEffect(() => {
+    if (!esDocente) return;
+    listarGrupos()
+      .then(setGrupos)
+      .catch(() => setGrupos([])); // el selector de grupo es opcional
+  }, [esDocente]);
+
+  async function cambiarGrupo(valor: string) {
+    setError(null);
+    const id = valor === "" ? null : Number(valor);
+    try {
+      await editarCuestionario(c.id, { grupo_id: id });
+      const g = grupos.find((x) => x.id === id);
+      onCambio({ grupo_id: id, grupo_nombre: g?.nombre ?? null, asignatura_nombre: g?.asignatura ?? null });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    }
+  }
 
   async function alternar() {
     setError(null);
@@ -167,6 +187,24 @@ export default function PanelDocente({ cuestionario: c, onEditar, onPublicado, o
           </Boton>
         </div>
       )}
+
+      <Select
+        etiqueta="Grupo (curso) del cuestionario"
+        value={c.grupo_id ?? ""}
+        onChange={(e) => cambiarGrupo(e.target.value)}
+        ayuda={
+          grupos.length === 0
+            ? "Aún no tienes grupos. Créalos en «Cursos» para que los estudiantes matriculados vean este cuestionario y para medir resultados de aprendizaje."
+            : "Los estudiantes matriculados lo ven en «Mis cursos» sin necesitar el código. Cambiar de grupo limpia los RA de las preguntas."
+        }
+      >
+        <option value="">Sin grupo</option>
+        {grupos.map((g) => (
+          <option key={g.id} value={g.id}>
+            {g.asignatura} · {g.nombre} ({g.periodo})
+          </option>
+        ))}
+      </Select>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Select

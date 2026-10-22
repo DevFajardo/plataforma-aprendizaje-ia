@@ -16,6 +16,9 @@ class Pregunta(BaseModel):
     respuesta_correcta: str = Field(description="Texto exacto de la opción correcta, o respuesta modelo si es abierta")
     explicacion: str = Field(description="Por qué esa es la respuesta, basada en el video")
     marca_tiempo: str = Field(default="", description="Minuto aproximado del video, formato mm:ss")
+    nivel_bloom: Literal["recordar", "comprender", "aplicar", "analizar", "evaluar", "crear"] | None = Field(
+        default=None, description="Nivel de la taxonomía de Bloom (revisada) que evalúa la pregunta"
+    )
 
 
 class ResultadoIA(BaseModel):

@@ -118,6 +118,9 @@ def detalle(cuestionario_id: int, usuario: Usuario = Depends(usuario_actual), db
         segundos_edicion=c.segundos_edicion if es_creador else None,
         estimacion_manual_min=c.estimacion_manual_min if es_creador else None,
         publicado_en=c.publicado_en if es_creador else None,
+        grupo_id=c.grupo_id,
+        grupo_nombre=c.grupo.nombre if c.grupo else None,
+        asignatura_nombre=c.grupo.asignatura.nombre if c.grupo else None,
         preguntas=[
             PreguntaOut(
                 id=p.id,
@@ -128,6 +131,8 @@ def detalle(cuestionario_id: int, usuario: Usuario = Depends(usuario_actual), db
                 marca_tiempo="" if oculto else p.marca_tiempo,
                 respuesta_correcta=p.respuesta_correcta if es_creador else None,
                 explicacion=p.explicacion if es_creador else None,
+                ra_id=p.ra_id if es_creador else None,
+                nivel_bloom=p.nivel_bloom if es_creador else None,
             )
             for p in c.preguntas
         ],

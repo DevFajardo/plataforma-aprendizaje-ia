@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   agregarPregunta,
+  rasDelCuestionario,
   editarCuestionario,
   editarPregunta,
   eliminarPregunta,
@@ -10,7 +11,7 @@ import {
   reordenarPreguntas,
 } from "@/lib/api";
 import { Aviso, Boton, ConfirmacionEnLinea, EncabezadoPagina, Icono, Input, Insignia, Select, Tarjeta, Textarea, TituloSeccion } from "./ui";
-import type { CuestionarioDetalle, EntradaPregunta, Pregunta, TipoPregunta } from "@/lib/tipos";
+import { NIVELES_BLOOM, type CuestionarioDetalle, type EntradaPregunta, type NivelBloom, type Pregunta, type TipoPregunta } from "@/lib/tipos";
 
 /** Borrador de una pregunta en edición (id null = pregunta nueva aún sin guardar). */
 interface Borrador {
@@ -23,6 +24,8 @@ interface Borrador {
   modelo: string; // respuesta modelo (abierta)
   explicacion: string;
   marca_tiempo: string;
+  ra_id: number | null;
+  nivel_bloom: NivelBloom | "";
 }
 
 const ETIQUETA_TIPO: Record<TipoPregunta, string> = {
@@ -46,11 +49,19 @@ function aBorrador(p: Pregunta): Borrador {
     modelo: p.tipo === "abierta" ? (p.respuesta_correcta ?? "") : "",
     explicacion: p.explicacion ?? "",
     marca_tiempo: p.marca_tiempo,
+    ra_id: p.ra_id ?? null,
+    nivel_bloom: p.nivel_bloom ?? "",
   };
 }
 
 function aEntrada(b: Borrador): EntradaPregunta {
-  const base = { enunciado: b.enunciado.trim(), explicacion: b.explicacion.trim(), marca_tiempo: b.marca_tiempo.trim() };
+  const base = {
+    enunciado: b.enunciado.trim(),
+    explicacion: b.explicacion.trim(),
+    marca_tiempo: b.marca_tiempo.trim(),
+    ra_id: b.ra_id,
+    nivel_bloom: b.nivel_bloom || null,
+  };
   if (b.tipo === "opcion_multiple") {
     const opciones = b.opciones.map((o) => o.trim());
     return { ...base, tipo: b.tipo, opciones, respuesta_correcta: opciones[b.indice] ?? "" };
@@ -113,6 +124,15 @@ export default function EditorCuestionario({ cuestionario: c, onTerminar }: Prop
     };
   }, [volcarTiempo]);
 
+  // Resultados de aprendizaje elegibles: los de la asignatura del grupo del cuestionario
+  const [ras, setRas] = useState<{ id: number; codigo: string; descripcion: string }[]>([]);
+  useEffect(() => {
+    if (!c.grupo_id) return;
+    rasDelCuestionario(c.id)
+      .then(setRas)
+      .catch(() => setRas([]));
+  }, [c.id, c.grupo_id]);
+
   const [titulo, setTitulo] = useState(c.titulo);
   const [resumen, setResumen] = useState(c.resumen);
   const [ideas, setIdeas] = useState<string[]>(c.ideas_clave);
@@ -156,6 +176,8 @@ export default function EditorCuestionario({ cuestionario: c, onTerminar }: Prop
         modelo: "",
         explicacion: "",
         marca_tiempo: "",
+        ra_id: null,
+        nivel_bloom: "",
       },
     ]);
   }
@@ -371,6 +393,35 @@ export default function EditorCuestionario({ cuestionario: c, onTerminar }: Prop
               placeholder="01:30"
               claseCampo="sm:w-52"
             />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Select
+                etiqueta="Resultado de aprendizaje (RA)"
+                value={b.ra_id ?? ""}
+                disabled={!c.grupo_id}
+                onChange={(e) => cambiar(b.clave, { ra_id: e.target.value ? Number(e.target.value) : null })}
+                ayuda={c.grupo_id ? undefined : "Asigna el cuestionario a un grupo en el panel del docente para elegir un RA."}
+              >
+                <option value="">Sin RA</option>
+                {ras.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.codigo} · {r.descripcion.length > 70 ? `${r.descripcion.slice(0, 70)}…` : r.descripcion}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                etiqueta="Nivel de Bloom"
+                value={b.nivel_bloom}
+                onChange={(e) => cambiar(b.clave, { nivel_bloom: e.target.value as NivelBloom | "" })}
+              >
+                <option value="">Sin clasificar</option>
+                {NIVELES_BLOOM.map((n) => (
+                  <option key={n} value={n}>
+                    {n.charAt(0).toUpperCase() + n.slice(1)}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </Tarjeta>
         ))}
 

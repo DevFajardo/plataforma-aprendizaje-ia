@@ -2,11 +2,14 @@
 
 export type TipoPregunta = "opcion_multiple" | "verdadero_falso" | "abierta";
 
+export type Rol = "estudiante" | "docente" | "coordinador" | "admin";
+
 export interface Usuario {
   id: number;
   nombre: string;
   email: string;
-  rol: "estudiante" | "docente";
+  rol: Rol;
+  programa_id?: number | null;
   acepta_tratamiento_datos: boolean;
   consentimiento_investigacion: boolean;
 }
@@ -43,7 +46,13 @@ export interface Pregunta {
   // Solo vienen para el creador; el feedback oficial lo da el servidor al responder
   respuesta_correcta: string | null;
   explicacion: string | null;
+  // Sprint 6 (solo el creador): resultado de aprendizaje y nivel de Bloom
+  ra_id?: number | null;
+  nivel_bloom?: NivelBloom | null;
 }
+
+export type NivelBloom = "recordar" | "comprender" | "aplicar" | "analizar" | "evaluar" | "crear";
+export const NIVELES_BLOOM: NivelBloom[] = ["recordar", "comprender", "aplicar", "analizar", "evaluar", "crear"];
 
 export interface CuestionarioDetalle {
   id: number;
@@ -69,6 +78,9 @@ export interface CuestionarioDetalle {
   segundos_edicion: number | null;
   estimacion_manual_min: number | null;
   publicado_en: string | null;
+  grupo_id?: number | null;
+  grupo_nombre?: string | null;
+  asignatura_nombre?: string | null;
   preguntas: Pregunta[];
 }
 
@@ -104,6 +116,8 @@ export interface EntradaPregunta {
   respuesta_correcta: string;
   explicacion: string;
   marca_tiempo: string;
+  ra_id?: number | null;
+  nivel_bloom?: NivelBloom | null;
 }
 
 export interface IntentoResultado {
@@ -335,4 +349,126 @@ export interface ResumenSus {
   interpretacion_promedio: string | null;
   distribucion: Record<string, number>;
   promedio_por_item: number[];
+}
+
+
+// ---------- Sprint 6: estructura académica, cursos, coordinación y alertas ----------
+
+export interface Facultad {
+  id: number;
+  nombre: string;
+  num_programas: number;
+}
+export interface Programa {
+  id: number;
+  facultad_id: number;
+  facultad: string;
+  nombre: string;
+  codigo: string;
+}
+export interface Asignatura {
+  id: number;
+  programa_id: number;
+  programa: string;
+  nombre: string;
+  codigo: string;
+  semestre: number;
+  ra_ids: number[];
+}
+export interface ResultadoAprendizaje {
+  id: number;
+  programa_id: number;
+  programa: string;
+  codigo: string;
+  descripcion: string;
+}
+export interface UsuarioAdmin {
+  id: number;
+  nombre: string;
+  email: string;
+  rol: Rol;
+  programa_id: number | null;
+  programa: string | null;
+}
+export interface Grupo {
+  id: number;
+  nombre: string;
+  periodo: string;
+  codigo_ingreso: string;
+  asignatura_id: number;
+  asignatura: string;
+  programa: string;
+  docente: string;
+  num_matriculados: number;
+  num_cuestionarios: number;
+}
+export interface Matriculado {
+  estudiante_id: number;
+  nombre: string;
+  email: string;
+  desde: string;
+}
+export interface MiCurso {
+  grupo_id: number;
+  nombre: string;
+  periodo: string;
+  asignatura: string;
+  programa: string;
+  docente: string;
+  cuestionarios: { id: number; titulo: string; num_preguntas: number; mejor_puntaje: number | null; mejor_total: number | null }[];
+}
+export type Semaforo = "verde" | "amarillo" | "rojo" | "sin_datos";
+export interface LogroRa {
+  ra_id: number;
+  codigo: string;
+  descripcion: string;
+  programa: string;
+  logro: number | null;
+  respuestas: number;
+  estudiantes: number;
+  semaforo: Semaforo;
+}
+export interface LogroGrupo {
+  grupo_id: number;
+  nombre: string;
+  periodo: string;
+  docente: string;
+  logro: number | null;
+  respuestas: number;
+  estudiantes: number;
+  semaforo: Semaforo;
+}
+export interface LogroAsignatura {
+  asignatura_id: number;
+  nombre: string;
+  codigo: string;
+  logro: number | null;
+  respuestas: number;
+  estudiantes: number;
+  semaforo: Semaforo;
+  grupos: LogroGrupo[];
+}
+export interface Coordinacion {
+  programas: { id: number; nombre: string }[];
+  programa_id: number | null;
+  programa_nombre: string;
+  periodo: string | null;
+  periodos: string[];
+  logro_global: number | null;
+  respuestas: number;
+  estudiantes: number;
+  ras: LogroRa[];
+  bloom: { nivel: NivelBloom; preguntas: number; respuestas: number; logro: number | null }[];
+  asignaturas: LogroAsignatura[];
+  tendencia: { semana: string; logro: number; respuestas: number }[];
+}
+export interface Alerta {
+  grupo_id: number;
+  grupo: string;
+  asignatura: string;
+  estudiante_id: number;
+  nombre: string;
+  email: string;
+  nivel: "alto" | "medio";
+  motivos: { codigo: string; texto: string }[];
 }

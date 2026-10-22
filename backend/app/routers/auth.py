@@ -3,11 +3,23 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.modelos import Cuestionario, Intento, Repaso, RespuestaSUS, Tarea, Usuario, Video, ahora
+from app.modelos import (
+    AlertaSeguimiento,
+    Cuestionario,
+    Grupo,
+    Intento,
+    Matricula,
+    Repaso,
+    RespuestaSUS,
+    Tarea,
+    Usuario,
+    Video,
+    ahora,
+)
 from app.routers import procesar
 from app.routers.cuestionarios import borrar_cuestionario
 from app.schemas_api import CuentaEditarIn, EliminarCuentaIn, LoginIn, RegistroIn, TokenOut, UsuarioOut
@@ -155,6 +167,16 @@ def eliminar_cuenta(datos: EliminarCuentaIn, usuario: Usuario = Depends(usuario_
     db.execute(delete(Repaso).where(Repaso.usuario_id == usuario.id))
     db.execute(delete(Intento).where(Intento.usuario_id == usuario.id))
     db.execute(delete(RespuestaSUS).where(RespuestaSUS.usuario_id == usuario.id))
+    # Estructura académica: matrículas, alertas y los grupos que dictaba (docente)
+    ids_grupos = list(db.scalars(select(Grupo.id).where(Grupo.docente_id == usuario.id)))
+    if ids_grupos:
+        db.execute(update(Cuestionario).where(Cuestionario.grupo_id.in_(ids_grupos)).values(grupo_id=None))
+        db.execute(delete(AlertaSeguimiento).where(AlertaSeguimiento.grupo_id.in_(ids_grupos)))
+        db.execute(delete(Matricula).where(Matricula.grupo_id.in_(ids_grupos)))
+        db.execute(delete(Grupo).where(Grupo.id.in_(ids_grupos)))
+    db.execute(delete(AlertaSeguimiento).where(
+        (AlertaSeguimiento.estudiante_id == usuario.id) | (AlertaSeguimiento.atendido_por_id == usuario.id)))
+    db.execute(delete(Matricula).where(Matricula.estudiante_id == usuario.id))
     db.delete(usuario)
     db.commit()
     for ruta in archivos:

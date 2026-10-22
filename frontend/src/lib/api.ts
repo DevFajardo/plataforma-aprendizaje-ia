@@ -10,6 +10,16 @@ import type {
   Resultados,
   CuestionarioResumen,
   Estadisticas,
+  Alerta,
+  Asignatura,
+  Coordinacion,
+  Facultad,
+  Grupo,
+  Matriculado,
+  MiCurso,
+  Programa,
+  ResultadoAprendizaje,
+  UsuarioAdmin,
   RespuestaSus,
   ResumenSus,
   IntentoHistorial,
@@ -194,6 +204,7 @@ export const editarCuestionario = (
     ideas_clave?: string[];
     repaso_dias?: number | null;
     estimacion_manual_min?: number | null;
+    grupo_id?: number | null;
   },
 ) => peticion<unknown>(`/api/cuestionarios/${id}`, { method: "PATCH", body: JSON.stringify(datos) });
 
@@ -223,7 +234,7 @@ async function descargarArchivo(ruta: string, nombre: string): Promise<void> {
   } catch {
     throw new Error("No se pudo conectar con el servidor.");
   }
-  if (!resp.ok) throw new Error(`No se pudo descargar el CSV (${resp.status}).`);
+  if (!resp.ok) throw new Error(`No se pudo descargar el archivo (${resp.status}).`);
   const url = URL.createObjectURL(await resp.blob());
   const a = document.createElement("a");
   a.href = url;
@@ -233,6 +244,9 @@ async function descargarArchivo(ruta: string, nombre: string): Promise<void> {
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+export const descargarPdfCuestionario = (id: number) =>
+  descargarArchivo(`/api/cuestionarios/${id}/reporte.pdf`, `resultados_${id}.pdf`);
 
 export const descargarCsv = (id: number) =>
   descargarArchivo(`/api/cuestionarios/${id}/resultados.csv`, `resultados_${id}.csv`);
@@ -303,3 +317,74 @@ export function subirArchivo(
     xhr.send(form);
   });
 }
+
+// ---------- Sprint 6: cursos, administración, coordinación y alertas ----------
+
+const enviar = <T,>(metodo: "PATCH" | "PUT", ruta: string, cuerpo: unknown) =>
+  peticion<T>(ruta, { method: metodo, body: JSON.stringify(cuerpo) });
+const borrar = (ruta: string) => peticion<void>(ruta, { method: "DELETE" });
+
+export const listarGrupos = () => peticion<Grupo[]>("/api/grupos");
+export const catalogoAsignaturas = () => peticion<Asignatura[]>("/api/catalogo/asignaturas");
+export const crearGrupo = (asignatura_id: number, periodo: string, nombre: string) =>
+  post<Grupo>("/api/grupos", { asignatura_id, periodo, nombre });
+export const editarGrupo = (id: number, datos: { periodo?: string; nombre?: string }) => enviar<Grupo>("PATCH", `/api/grupos/${id}`, datos);
+export const renovarCodigoGrupo = (id: number) => post<Grupo>(`/api/grupos/${id}/nuevo-codigo`);
+export const eliminarGrupo = (id: number) => borrar(`/api/grupos/${id}`);
+export const listarMatriculados = (id: number) => peticion<Matriculado[]>(`/api/grupos/${id}/matriculados`);
+export const quitarMatriculado = (grupo: number, estudiante: number) => borrar(`/api/grupos/${grupo}/matriculados/${estudiante}`);
+export const rasDelCuestionario = (id: number) =>
+  peticion<{ id: number; codigo: string; descripcion: string }[]>(`/api/cuestionarios/${id}/ras`);
+
+export const misCursos = () => peticion<MiCurso[]>("/api/mis-cursos");
+export const unirseACurso = (codigo: string) => post<MiCurso>("/api/mis-cursos/unirse", { codigo: codigo.trim() });
+export const salirDelCurso = (grupoId: number) => borrar(`/api/mis-cursos/${grupoId}`);
+
+export const obtenerCoordinacion = (programaId?: number | null, periodo?: string | null) => {
+  const q = new URLSearchParams();
+  if (programaId) q.set("programa_id", String(programaId));
+  if (periodo) q.set("periodo", periodo);
+  return peticion<Coordinacion>(`/api/coordinacion/resumen${q.size ? `?${q}` : ""}`);
+};
+export const descargarPdfRa = (programaId?: number | null, periodo?: string | null) => {
+  const q = new URLSearchParams();
+  if (programaId) q.set("programa_id", String(programaId));
+  if (periodo) q.set("periodo", periodo);
+  return descargarArchivo(`/api/coordinacion/reporte-ra.pdf${q.size ? `?${q}` : ""}`, `reporte_ra_${periodo ?? "todos"}.pdf`);
+};
+
+export const listarAlertas = () => peticion<Alerta[]>("/api/alertas");
+export const atenderAlerta = (grupo_id: number, estudiante_id: number, nota: string) =>
+  post<unknown>("/api/alertas/atender", { grupo_id, estudiante_id, nota });
+
+// Administración (rol admin)
+export const adminFacultades = () => peticion<Facultad[]>("/api/admin/facultades");
+export const adminCrearFacultad = (nombre: string) => post<Facultad>("/api/admin/facultades", { nombre });
+export const adminEditarFacultad = (id: number, nombre: string) => enviar<Facultad>("PATCH", `/api/admin/facultades/${id}`, { nombre });
+export const adminEliminarFacultad = (id: number) => borrar(`/api/admin/facultades/${id}`);
+
+export const adminProgramas = () => peticion<Programa[]>("/api/admin/programas");
+export const adminCrearPrograma = (facultad_id: number, nombre: string, codigo: string) =>
+  post<Programa>("/api/admin/programas", { facultad_id, nombre, codigo });
+export const adminEditarPrograma = (id: number, datos: { facultad_id?: number; nombre?: string; codigo?: string }) =>
+  enviar<Programa>("PATCH", `/api/admin/programas/${id}`, datos);
+export const adminEliminarPrograma = (id: number) => borrar(`/api/admin/programas/${id}`);
+
+export const adminAsignaturas = () => peticion<Asignatura[]>("/api/admin/asignaturas");
+export const adminCrearAsignatura = (programa_id: number, nombre: string, codigo: string, semestre: number) =>
+  post<Asignatura>("/api/admin/asignaturas", { programa_id, nombre, codigo, semestre });
+export const adminEditarAsignatura = (id: number, datos: { nombre?: string; codigo?: string; semestre?: number }) =>
+  enviar<Asignatura>("PATCH", `/api/admin/asignaturas/${id}`, datos);
+export const adminAsignarRas = (id: number, ra_ids: number[]) => enviar<Asignatura>("PUT", `/api/admin/asignaturas/${id}/ras`, { ra_ids });
+export const adminEliminarAsignatura = (id: number) => borrar(`/api/admin/asignaturas/${id}`);
+
+export const adminRas = () => peticion<ResultadoAprendizaje[]>("/api/admin/ras");
+export const adminCrearRa = (programa_id: number, codigo: string, descripcion: string) =>
+  post<ResultadoAprendizaje>("/api/admin/ras", { programa_id, codigo, descripcion });
+export const adminEditarRa = (id: number, datos: { codigo?: string; descripcion?: string }) =>
+  enviar<ResultadoAprendizaje>("PATCH", `/api/admin/ras/${id}`, datos);
+export const adminEliminarRa = (id: number) => borrar(`/api/admin/ras/${id}`);
+
+export const adminUsuarios = () => peticion<UsuarioAdmin[]>("/api/admin/usuarios");
+export const adminEditarUsuario = (id: number, datos: { rol?: string; programa_id?: number | null }) =>
+  enviar<UsuarioAdmin>("PATCH", `/api/admin/usuarios/${id}`, datos);

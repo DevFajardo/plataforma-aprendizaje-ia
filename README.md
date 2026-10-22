@@ -112,6 +112,15 @@ cd backend
 
 Crea (si no existen) `docente@demo.com` y `estudiante@demo.com`, ambas con contraseña `Demo12345` y con los consentimientos (política de datos e investigación) aceptados. El script es idempotente y no genera cuestionarios (eso consume cuota de IA).
 
+### Estructura académica institucional (Sprint 6)
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe scripts\sembrar_estructura.py
+```
+
+Idempotente (solo añade lo que falta): Facultad de Ingeniería → programa «Ingeniería de Sistemas y Computación» con 4 asignaturas y 5 resultados de aprendizaje de **ejemplo** (marcados «(ejemplo)»; reemplázalos desde `/admin`), las cuentas `coordinador@demo.com` y `admin@demo.com` (contraseña `Demo12345`) y un grupo del docente demo con el estudiante demo matriculado. Muestra el código de ingreso del grupo.
+
 ## Variables de entorno (`backend/.env`)
 
 | Variable | Descripción | Por defecto |

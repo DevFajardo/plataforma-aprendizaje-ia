@@ -17,7 +17,7 @@ import {
   TituloSeccion,
   type TonoBarra,
 } from "@/components/ui";
-import { descargarCsv, obtenerResultados } from "@/lib/api";
+import { descargarCsv, descargarPdfCuestionario, obtenerResultados } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import { formatearFecha } from "@/lib/fechas";
 import type { GananciaAprendizaje, PreguntaResultado, Resultados, Retencion } from "@/lib/tipos";
@@ -143,6 +143,18 @@ function Contenido() {
       .catch((e) => setError(e instanceof Error ? e.message : "Error desconocido"));
   }, [usuario, id]);
 
+  async function pdf() {
+    setError(null);
+    setDescargando(true);
+    try {
+      await descargarPdfCuestionario(Number(id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setDescargando(false);
+    }
+  }
+
   async function csv() {
     setError(null);
     setDescargando(true);
@@ -173,9 +185,14 @@ function Contenido() {
             titulo={`Resultados: ${datos.titulo}`}
             etiquetas={datos.modo === "control" ? <Insignia tono="neutro">Grupo control</Insignia> : undefined}
             acciones={
-              <Boton onClick={csv} cargando={descargando} disabled={datos.total_intentos === 0}>
-                <Icono nombre="descargar" /> {descargando ? "Descargando…" : "Descargar CSV"}
-              </Boton>
+              <>
+                <Boton onClick={csv} cargando={descargando} disabled={datos.total_intentos === 0}>
+                  <Icono nombre="descargar" /> {descargando ? "Descargando…" : "Descargar CSV"}
+                </Boton>
+                <Boton variante="secundario" onClick={pdf} disabled={descargando}>
+                  <Icono nombre="descargar" /> Descargar PDF
+                </Boton>
+              </>
             }
           />
 

@@ -75,7 +75,22 @@ Si aún no tienes intentos, el panel te invita a generar tu primer cuestionario.
 2. Entra en **Unirse**, escribe el código y confirma.
 3. El cuestionario aparecerá en «Cuestionarios a los que me uní». Solo se ven los cuestionarios **publicados**.
 
+### Mis cursos (estudiantes)
+
+1. Tu docente te entrega el **código de ingreso** del curso (6 caracteres, distinto del código de un cuestionario).
+2. Entra en **Mis cursos**, escribe el código y pulsa **Unirme al curso**.
+3. Verás cada curso (asignatura, programa, docente y periodo) con los cuestionarios que tu docente publique en él: se abren con un clic, **sin pedir código**.
+4. Con **Salir del curso** dejas de ver sus cuestionarios (tus intentos se conservan).
+
 ## 7. Guía para docentes
+
+### Cursos y grupos
+
+1. Entra en **Cursos** y crea un grupo: elige la **asignatura**, el **periodo** (formato `2026-2`) y un **nombre** (p. ej. «Grupo A»).
+2. Comparte el **código de ingreso** con tus estudiantes. Puedes copiarlo, **renovarlo** si se filtró, editar el grupo, ver y quitar **matriculados** o eliminarlo.
+3. En el cuestionario, en el **Panel del docente**, elige el **Grupo (curso)**: los matriculados lo ven en «Mis cursos». Al editar, cada pregunta permite elegir un **resultado de aprendizaje (RA)** de la asignatura del grupo y un **nivel de Bloom**; la IA ya propone el nivel al generar el cuestionario.
+4. Al final de **Cursos** (y en el panel del coordinador) aparecen las **alertas tempranas** de tus estudiantes: sin actividad desde hace 14 días o más, promedio inicial menor a 60 %, 2 o más repasos vencidos o una caída de 20 puntos entre los últimos intentos. Cada alerta explica el motivo; con 2 o más motivos el nivel es **alto**. Usa **Marcar como atendida** (con una nota opcional) para ocultarla hasta que aparezca un motivo nuevo.
+5. En **Ver resultados** hay un botón **Descargar PDF** con el reporte institucional del cuestionario.
 
 ### Publicar y compartir
 1. Abre tu cuestionario (por defecto es un **borrador**, solo tú lo ves).
@@ -109,6 +124,30 @@ Al publicar por primera vez puedes indicar cuántos minutos te habría tomado cr
 
 ### Panel del docente
 Además de lo del estudiante, el **Panel** muestra tus cuestionarios publicados, los estudiantes únicos, los intentos recibidos, el promedio general y una tabla con intentos y promedio por cuestionario.
+
+## 7b. Guía para coordinadores
+
+Si tu cuenta es de **coordinador**, el administrador te asigna un programa y verás **Coordinación** en el menú:
+
+- **Logro por resultado de aprendizaje**: porcentaje de acierto en las preguntas asociadas a cada RA, con semáforo (verde desde 70 %, amarillo de 50 a 69 %, rojo por debajo de 50 %), respuestas y estudiantes evaluados.
+- **Distribución por nivel de Bloom**, **desempeño por asignatura y grupo** y **tendencia semanal**.
+- **Filtro por periodo** (p. ej. `2026-2`).
+- **Alertas tempranas** de todos los grupos del programa, con la acción «Marcar como atendida».
+- **Descargar PDF**: reporte institucional con la franja azul y naranja de la CUL, tablas y barras de logro, para actas y acreditación.
+
+Solo cuentan las respuestas a preguntas cerradas de estudiantes matriculados en el grupo del cuestionario. Los RA que se muestran son los definidos para tu programa (los de ejemplo llevan «(ejemplo)» en su descripción).
+
+## 7c. Guía para administradores
+
+Con rol **admin** aparece **Admin** en el menú, con cinco pestañas:
+
+1. **Facultades**: crear, renombrar y eliminar (no se elimina si tiene programas).
+2. **Programas**: nombre, código y facultad.
+3. **Asignaturas**: nombre, código y semestre; el botón **Editar** abre la selección de los **resultados de aprendizaje** que aporta cada asignatura.
+4. **Resultados de aprendizaje**: código (RA1, RA2…) y descripción por programa (Decreto 1330 de 2019).
+5. **Usuarios**: cambiar el rol (estudiante, docente, coordinador, administrador) y asignar el **programa** al coordinador.
+
+El registro público solo crea estudiantes y docentes; los coordinadores y administradores se promueven desde aquí. Para cargar una estructura de ejemplo ejecuta `scripts\sembrar_estructura.py` (ver el README): crea `coordinador@demo.com` y `admin@demo.com` (clave `Demo12345`).
 
 ## 8. Encuesta de usabilidad (SUS)
 

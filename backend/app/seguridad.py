@@ -68,3 +68,19 @@ def requiere_docente(usuario: Usuario = Depends(usuario_actual)) -> Usuario:
     if usuario.rol != "docente":
         raise HTTPException(status_code=403, detail="Esta acción es solo para docentes.")
     return usuario
+
+
+def requiere_rol(*roles: str):
+    """Fábrica de dependencias: exige que el usuario tenga uno de los roles indicados (403 si no)."""
+
+    def _dependencia(usuario: Usuario = Depends(usuario_actual)) -> Usuario:
+        if usuario.rol not in roles:
+            raise HTTPException(status_code=403, detail="No tienes permiso para realizar esta acción.")
+        return usuario
+
+    return _dependencia
+
+
+requiere_admin = requiere_rol("admin")
+requiere_coordinacion = requiere_rol("coordinador", "admin")
+requiere_seguimiento = requiere_rol("docente", "coordinador", "admin")

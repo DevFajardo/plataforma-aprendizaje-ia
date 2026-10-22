@@ -70,6 +70,7 @@ def _generar_y_guardar(db: Session, tarea: Tarea, video: Video, transcripcion: T
                 respuesta_correcta=p.respuesta_correcta,
                 explicacion=p.explicacion,
                 marca_tiempo=p.marca_tiempo,
+                nivel_bloom=p.nivel_bloom,
             )
             for i, p in enumerate(resultado.preguntas)
         ],

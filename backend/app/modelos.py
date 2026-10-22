@@ -3,7 +3,7 @@ import secrets
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Table, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -32,7 +32,9 @@ class Usuario(Base):
     nombre: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
-    rol: Mapped[str] = mapped_column(String(20), default="estudiante")  # estudiante | docente
+    rol: Mapped[str] = mapped_column(String(20), default="estudiante")  # estudiante | docente | coordinador | admin
+    # Sprint 6: el coordinador coordina un programa académico
+    programa_id: Mapped[int | None] = mapped_column(ForeignKey("programas.id", ondelete="SET NULL"), nullable=True)
     # Ley 1581 de 2012: aceptación obligatoria de la política de datos y consentimiento opcional de investigación
     acepta_tratamiento_datos: Mapped[bool] = mapped_column(Boolean, default=False)
     consentimiento_investigacion: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -76,8 +78,11 @@ class Cuestionario(Base):
     segundos_edicion: Mapped[int] = mapped_column(Integer, default=0)  # tiempo activo acumulado del docente
     publicado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     estimacion_manual_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Sprint 6: grupo (curso) al que se asigna el cuestionario
+    grupo_id: Mapped[int | None] = mapped_column(ForeignKey("grupos.id", ondelete="SET NULL"), nullable=True, index=True)
 
     video: Mapped[Video] = relationship()
+    grupo: Mapped["Grupo | None"] = relationship()
     preguntas: Mapped[list["Pregunta"]] = relationship(
         back_populates="cuestionario",
         order_by="Pregunta.orden",
@@ -99,6 +104,11 @@ class Pregunta(Base):
     respuesta_correcta: Mapped[str] = mapped_column(Text)
     explicacion: Mapped[str] = mapped_column(Text, default="")
     marca_tiempo: Mapped[str] = mapped_column(String(20), default="")
+    # Sprint 6: resultado de aprendizaje y nivel de la taxonomía de Bloom (opcionales)
+    ra_id: Mapped[int | None] = mapped_column(
+        ForeignKey("resultados_aprendizaje.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    nivel_bloom: Mapped[str | None] = mapped_column(String(15), nullable=True)
 
     cuestionario: Mapped[Cuestionario] = relationship(back_populates="preguntas")
 
@@ -162,3 +172,113 @@ class RespuestaSUS(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
 
     usuario: Mapped[Usuario] = relationship()
+
+
+# ---------- Sprint 6: estructura académica ----------
+
+NIVELES_BLOOM = ("recordar", "comprender", "aplicar", "analizar", "evaluar", "crear")
+ROLES = ("estudiante", "docente", "coordinador", "admin")
+
+
+class Facultad(Base):
+    __tablename__ = "facultades"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(150), unique=True)
+
+    programas: Mapped[list["Programa"]] = relationship(back_populates="facultad", cascade="all, delete-orphan")
+
+
+class Programa(Base):
+    __tablename__ = "programas"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    facultad_id: Mapped[int] = mapped_column(ForeignKey("facultades.id", ondelete="CASCADE"), index=True)
+    nombre: Mapped[str] = mapped_column(String(150))
+    codigo: Mapped[str] = mapped_column(String(20), unique=True)
+
+    facultad: Mapped[Facultad] = relationship(back_populates="programas")
+    asignaturas: Mapped[list["Asignatura"]] = relationship(back_populates="programa", cascade="all, delete-orphan")
+    resultados: Mapped[list["ResultadoAprendizaje"]] = relationship(back_populates="programa", cascade="all, delete-orphan")
+
+
+# Relación muchos a muchos: resultados de aprendizaje que aporta cada asignatura
+asignatura_ra = Table(
+    "asignatura_ra",
+    Base.metadata,
+    Column("asignatura_id", ForeignKey("asignaturas.id", ondelete="CASCADE"), primary_key=True),
+    Column("ra_id", ForeignKey("resultados_aprendizaje.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class ResultadoAprendizaje(Base):
+    """Resultado de aprendizaje del programa (Decreto 1330 de 2019)."""
+
+    __tablename__ = "resultados_aprendizaje"
+    __table_args__ = (UniqueConstraint("programa_id", "codigo"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    programa_id: Mapped[int] = mapped_column(ForeignKey("programas.id", ondelete="CASCADE"), index=True)
+    codigo: Mapped[str] = mapped_column(String(20))  # p. ej. "RA1"
+    descripcion: Mapped[str] = mapped_column(Text)
+
+    programa: Mapped[Programa] = relationship(back_populates="resultados")
+
+
+class Asignatura(Base):
+    __tablename__ = "asignaturas"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    programa_id: Mapped[int] = mapped_column(ForeignKey("programas.id", ondelete="CASCADE"), index=True)
+    nombre: Mapped[str] = mapped_column(String(150))
+    codigo: Mapped[str] = mapped_column(String(20))
+    semestre: Mapped[int] = mapped_column(Integer, default=1)
+
+    programa: Mapped[Programa] = relationship(back_populates="asignaturas")
+    resultados: Mapped[list[ResultadoAprendizaje]] = relationship(secondary=asignatura_ra)
+    grupos: Mapped[list["Grupo"]] = relationship(back_populates="asignatura", cascade="all, delete-orphan")
+
+
+class Grupo(Base):
+    """Grupo (curso) de una asignatura en un periodo, a cargo de un docente."""
+
+    __tablename__ = "grupos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    asignatura_id: Mapped[int] = mapped_column(ForeignKey("asignaturas.id", ondelete="CASCADE"), index=True)
+    docente_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), index=True)
+    periodo: Mapped[str] = mapped_column(String(10))  # p. ej. "2026-2"
+    nombre: Mapped[str] = mapped_column(String(100))
+    codigo_ingreso: Mapped[str] = mapped_column(String(6), unique=True, index=True, default=generar_codigo)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+
+    asignatura: Mapped[Asignatura] = relationship(back_populates="grupos")
+    docente: Mapped[Usuario] = relationship(foreign_keys=[docente_id])
+    matriculas: Mapped[list["Matricula"]] = relationship(back_populates="grupo", cascade="all, delete-orphan")
+
+
+class Matricula(Base):
+    __tablename__ = "matriculas"
+    __table_args__ = (UniqueConstraint("grupo_id", "estudiante_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    grupo_id: Mapped[int] = mapped_column(ForeignKey("grupos.id", ondelete="CASCADE"), index=True)
+    estudiante_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), index=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+
+    grupo: Mapped[Grupo] = relationship(back_populates="matriculas")
+    estudiante: Mapped[Usuario] = relationship(foreign_keys=[estudiante_id])
+
+
+class AlertaSeguimiento(Base):
+    """Registro de que una alerta temprana fue atendida; no se vuelve a mostrar hasta que aparezca un motivo nuevo."""
+
+    __tablename__ = "alertas_seguimiento"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    grupo_id: Mapped[int] = mapped_column(ForeignKey("grupos.id", ondelete="CASCADE"), index=True)
+    estudiante_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), index=True)
+    atendido_por_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    motivos: Mapped[str] = mapped_column(String(200))  # códigos separados por coma
+    nota: Mapped[str] = mapped_column(Text, default="")
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)

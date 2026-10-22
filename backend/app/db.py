@@ -51,6 +51,7 @@ _COLUMNAS_NUEVAS = {
         ("acepta_tratamiento_datos", "BOOLEAN DEFAULT FALSE"),
         ("consentimiento_investigacion", "BOOLEAN DEFAULT FALSE"),
         ("consentimiento_fecha", "TIMESTAMP"),
+        ("programa_id", "INTEGER"),
     ],
     "cuestionarios": [
         ("modo", "VARCHAR(20) DEFAULT 'aprendizaje'"),
@@ -59,7 +60,9 @@ _COLUMNAS_NUEVAS = {
         ("segundos_edicion", "INTEGER DEFAULT 0"),
         ("publicado_en", "TIMESTAMP"),
         ("estimacion_manual_min", "INTEGER"),
+        ("grupo_id", "INTEGER"),
     ],
+    "preguntas": [("ra_id", "INTEGER"), ("nivel_bloom", "VARCHAR(15)")],
     "intentos": [("tipo", "VARCHAR(10) DEFAULT 'inicial'")],
 }
 
@@ -71,7 +74,10 @@ def _migrar_columnas() -> None:
     insp = inspect(engine)
     anadidas: set[tuple[str, str]] = set()
     with engine.begin() as con:
+        tablas = set(insp.get_table_names())
         for tabla, columnas in _COLUMNAS_NUEVAS.items():
+            if tabla not in tablas:
+                continue
             existentes = {c["name"] for c in insp.get_columns(tabla)}
             for nombre, tipo in columnas:
                 if nombre not in existentes:

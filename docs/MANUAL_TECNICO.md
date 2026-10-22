@@ -8,7 +8,7 @@ flowchart TB
         N[Next.js 16 · App Router · Tailwind]
     end
     subgraph Servidor["Backend FastAPI"]
-        R[Routers: auth, procesar, cuestionarios,<br/>intentos, docente, comparar,<br/>medios, estadisticas, sus]
+        R[Routers: auth, procesar, cuestionarios,<br/>intentos, docente, comparar,<br/>medios, estadisticas, sus,<br/>admin, cursos, coordinacion]
         S[Seguridad: bcrypt + JWT]
         T[services/transcripcion]
         I[services/ia: generar_con_respaldo]
@@ -103,7 +103,8 @@ erDiagram
         string nombre
         string email UK
         string password_hash
-        string rol "estudiante | docente"
+        string rol "estudiante | docente | coordinador | admin"
+        int programa_id FK "solo coordinador (Sprint 6)"
         bool acepta_tratamiento_datos "Ley 1581, obligatorio"
         bool consentimiento_investigacion "opcional"
         datetime consentimiento_fecha
@@ -140,6 +141,7 @@ erDiagram
         int segundos_edicion
         datetime publicado_en
         int estimacion_manual_min
+        int grupo_id FK "nulo = sin grupo (Sprint 6)"
         datetime creado_en
     }
     CUESTIONARIOS ||--o{ PREGUNTAS : "contiene"
@@ -153,6 +155,8 @@ erDiagram
         text respuesta_correcta
         text explicacion
         string marca_tiempo
+        int ra_id FK "resultado de aprendizaje, nulo"
+        string nivel_bloom "recordar..crear, nulo"
     }
     USUARIOS ||--o{ TAREAS : "solicita"
     CUESTIONARIOS |o--o{ TAREAS : "resultado"
@@ -202,7 +206,36 @@ erDiagram
     }
 ```
 
-Tablas: `usuarios`, `videos`, `cuestionarios`, `preguntas`, `tareas`, `intentos`, `repasos`, `respuestas_sus`.
+Tablas: `usuarios`, `videos`, `cuestionarios`, `preguntas`, `tareas`, `intentos`, `repasos`, `respuestas_sus` y, desde el Sprint 6, `facultades`, `programas`, `asignaturas`, `resultados_aprendizaje`, `asignatura_ra`, `grupos`, `matriculas` y `alertas_seguimiento`.
+
+### Estructura académica (Sprint 6)
+
+```mermaid
+erDiagram
+    FACULTADES ||--o{ PROGRAMAS : "tiene"
+    PROGRAMAS ||--o{ ASIGNATURAS : "ofrece"
+    PROGRAMAS ||--o{ RESULTADOS_APRENDIZAJE : "define"
+    ASIGNATURAS }o--o{ RESULTADOS_APRENDIZAJE : "asignatura_ra"
+    ASIGNATURAS ||--o{ GRUPOS : "se dicta en"
+    USUARIOS ||--o{ GRUPOS : "docente_id"
+    GRUPOS ||--o{ MATRICULAS : "inscribe"
+    USUARIOS ||--o{ MATRICULAS : "estudiante_id"
+    GRUPOS |o--o{ CUESTIONARIOS : "grupo_id"
+    RESULTADOS_APRENDIZAJE |o--o{ PREGUNTAS : "ra_id"
+    PROGRAMAS |o--o{ USUARIOS : "coordina (programa_id)"
+    GRUPOS ||--o{ ALERTAS_SEGUIMIENTO : "atenciones"
+    FACULTADES { int id PK  string nombre UK }
+    PROGRAMAS { int id PK  int facultad_id FK  string nombre  string codigo UK }
+    ASIGNATURAS { int id PK  int programa_id FK  string nombre  string codigo  int semestre }
+    RESULTADOS_APRENDIZAJE { int id PK  int programa_id FK  string codigo "RA1 (UK por programa)"  text descripcion }
+    GRUPOS { int id PK  int asignatura_id FK  int docente_id FK  string periodo "2026-2"  string nombre  string codigo_ingreso UK "6 caracteres" }
+    MATRICULAS { int id PK  int grupo_id FK  int estudiante_id FK  datetime creado_en }
+    ALERTAS_SEGUIMIENTO { int id PK  int grupo_id FK  int estudiante_id FK  int atendido_por_id FK  string motivos "codigos separados por coma"  text nota }
+```
+
+Las columnas nuevas de tablas existentes (`usuarios.programa_id`, `cuestionarios.grupo_id`, `preguntas.ra_id`, `preguntas.nivel_bloom`) se migran con `_migrar_columnas()`; las tablas nuevas las crea `create_all`. Las restricciones de borrado se aplican en la API (409 si una facultad tiene programas, un programa tiene asignaturas/RA o una asignatura tiene grupos) porque SQLite no impone claves foráneas por defecto.
+
+**Roles.** `estudiante` y `docente` se crean por el registro público (`RegistroIn.rol` solo admite esos dos). `coordinador` (con `programa_id`) y `admin` los asigna un administrador en `/admin` (o el script `sembrar_estructura.py`). Las dependencias de `seguridad.py` son `requiere_docente`, `requiere_rol(*roles)`, `requiere_admin`, `requiere_coordinacion` (coordinador o admin) y `requiere_seguimiento` (docente, coordinador o admin).
 
 Las tablas se crean con `Base.metadata.create_all`; las columnas añadidas después del Sprint 2 se migran con `_migrar_columnas()` en `db.py` (`ALTER TABLE ADD COLUMN` si faltan; la primera vez que se añade una columna también rellena los datos previos: `plataforma` y `video_externo_id` de los videos, `tipo` de los intentos —el primero finalizado de cada usuario por cuestionario es `inicial` y los demás `practica`— y `publicado_en` de los cuestionarios ya publicados). Las cuentas anteriores al Sprint 5 quedan con `acepta_tratamiento_datos = false` y se les pide aceptar la política en «Mi cuenta». Borrar un cuestionario elimina en cascada sus preguntas e intentos; si su video era un archivo subido y nadie más lo usa, también se elimina el archivo de `subidas/`.
 
@@ -250,6 +283,58 @@ Todos los endpoints (salvo los marcados «público») exigen la cabecera `Author
 | GET | `/api/sus/resumen` | docente | n, promedio, desviación estándar muestral, mín., máx., distribución por interpretación y promedio por ítem. |
 | GET | `/api/sus/resumen.csv` | docente | CSV anónimo (id secuencial, rol, 10 respuestas, puntaje, comentario, fecha) **solo de usuarios con consentimiento de investigación**. |
 
+### Endpoints del Sprint 6
+
+| Método | Ruta | Permisos | Descripción |
+|---|---|---|---|
+| GET/POST | `/api/admin/facultades` · PATCH/DELETE `/{id}` | admin | CRUD de facultades (409 si el nombre se repite o si tiene programas). |
+| GET/POST | `/api/admin/programas` · PATCH/DELETE `/{id}` | admin | CRUD de programas (`facultad_id`, `nombre`, `codigo` único). |
+| GET/POST | `/api/admin/asignaturas` (`?programa_id`) · PATCH/DELETE `/{id}` | admin | CRUD de asignaturas (`programa_id`, `nombre`, `codigo`, `semestre`); no se elimina con grupos. |
+| PUT | `/api/admin/asignaturas/{id}/ras` | admin | `{ra_ids}`: RA que aporta la asignatura (deben ser del mismo programa). |
+| GET/POST | `/api/admin/ras` (`?programa_id`) · PATCH/DELETE `/{id}` | admin | CRUD de resultados de aprendizaje (código único por programa). Al eliminar uno, sus preguntas quedan sin RA. |
+| GET | `/api/admin/usuarios` | admin | Lista de usuarios con rol y programa. |
+| PATCH | `/api/admin/usuarios/{id}` | admin | Cambia `rol` y `programa_id` (solo tiene efecto en coordinadores). Un admin no puede quitarse su propio rol. |
+| GET | `/api/catalogo/asignaturas` | docente, coordinador, admin | Asignaturas disponibles para crear grupos. |
+| GET | `/api/grupos` | docente (sus grupos), coordinador (su programa), admin (todos) | Grupos con código de ingreso, nº de matriculados y de cuestionarios. |
+| POST | `/api/grupos` | docente | `{asignatura_id, periodo "AAAA-S", nombre}`: crea un grupo con código de ingreso único de 6 caracteres. |
+| PATCH/DELETE | `/api/grupos/{id}` | docente dueño (o admin) | Edita nombre/periodo o elimina (los cuestionarios quedan sin grupo). |
+| POST | `/api/grupos/{id}/nuevo-codigo` | docente dueño (o admin) | Renueva el código de ingreso. |
+| GET | `/api/grupos/{id}/matriculados` | quien ve el grupo | Estudiantes matriculados. |
+| DELETE | `/api/grupos/{id}/matriculados/{estudiante_id}` | docente dueño (o admin) | Quita a un estudiante del grupo. |
+| POST | `/api/mis-cursos/unirse` | estudiante | `{codigo}`: matricula al estudiante (404 código inexistente, 409 ya matriculado). |
+| GET | `/api/mis-cursos` | estudiante | Sus cursos con los cuestionarios **publicados** asignados al grupo y su mejor resultado. |
+| DELETE | `/api/mis-cursos/{grupo_id}` | estudiante | Salir del curso. |
+| GET | `/api/cuestionarios/{id}/ras` | docente creador | RA elegibles: los de la asignatura del grupo del cuestionario (lista vacía sin grupo). |
+| PATCH | `/api/cuestionarios/{id}` | docente creador | Acepta además `grupo_id` (uno de sus grupos; `null` lo quita). Al cambiar de grupo se limpian los RA de las preguntas. `POST .../publicar` también admite `grupo_id`. |
+| PUT/POST | `/api/preguntas/{id}` · `/api/cuestionarios/{id}/preguntas` | docente creador | Aceptan `ra_id` (debe pertenecer a la asignatura del grupo; 400 si no) y `nivel_bloom` (`recordar`, `comprender`, `aplicar`, `analizar`, `evaluar`, `crear`; 422 si es otro valor). |
+| GET | `/api/coordinacion/resumen?programa_id&periodo` | coordinador (su programa), admin (uno o todos) | Logro por RA, por nivel de Bloom, por asignatura/grupo, tendencia semanal y lista de periodos. 400 si el coordinador no tiene programa; 403 si pide otro programa. |
+| GET | `/api/coordinacion/reporte-ra.pdf?programa_id&periodo` | coordinador, admin | Reporte institucional en PDF (`application/pdf`). |
+| GET | `/api/cuestionarios/{id}/reporte.pdf` | docente creador | PDF con resultados del cuestionario y su grupo. |
+| GET | `/api/alertas?grupo_id` | docente (sus grupos), coordinador (su programa), admin | Alertas tempranas vigentes (calculadas al vuelo). |
+| POST | `/api/alertas/atender` | ídem | `{grupo_id, estudiante_id, nota}`: registra la atención de la alerta vigente (404 si no hay). |
+| GET | `/api/alertas/seguimientos` | ídem | Historial de atenciones. |
+
+### Logro por resultado de aprendizaje
+
+`services/logro.py`. Solo cuentan las respuestas a preguntas **cerradas** (las abiertas no se califican) de intentos **finalizados** de estudiantes **matriculados** en el grupo al que está asignado el cuestionario; los intentos del creador no cuentan. Logro = aciertos ÷ respuestas × 100. Semáforo: `>= 70` verde, `50 a 69` amarillo, `< 50` rojo, sin respuestas = sin datos. El filtro de periodo usa `Grupo.periodo`. La tendencia agrupa las respuestas por semana (lunes) de la fecha del intento. El nivel de Bloom y el RA se asignan por pregunta; las respuestas a preguntas sin RA/Bloom no entran en esas vistas pero sí en el logro global, por asignatura y por grupo.
+
+### Alertas tempranas
+
+`services/alertas.py`; no se almacenan, se calculan por estudiante matriculado en cada consulta (cada alerta explica su motivo en texto):
+
+| Código | Regla |
+|---|---|
+| `inactividad` | 14 días o más sin intentos (se toma el más reciente entre el último intento y la fecha de matrícula, de modo que una matrícula nueva no alerta). |
+| `bajo_promedio` | Promedio de los intentos `inicial` finalizados en los cuestionarios del grupo menor a 60 %. |
+| `repasos_vencidos` | 2 o más repasos diferidos vencidos sin completar. |
+| `caida` | El último intento del grupo es 20 puntos porcentuales o más inferior al anterior. |
+
+Nivel `alto` con 2 o más motivos; `medio` con uno. «Marcar como atendida» guarda en `alertas_seguimiento` los códigos vigentes; la alerta no vuelve a mostrarse mientras sus motivos sean un subconjunto de los de la atención más reciente (reaparece si surge un motivo nuevo).
+
+### Reportes PDF
+
+`services/reportes_pdf.py` (reportlab, fuente Helvetica sin incrustar tipografías): franja azul `#0B468A` con línea naranja `#E88A37`, título, programa, periodo y fecha de generación; tablas con barras de logro por semáforo; pie «Plataforma de Aprendizaje Activo — Proyecto académico CUL» y «Página n de m» (lienzo de dos pasadas). Dos reportes: resultados de aprendizaje del programa y resultados de un cuestionario/grupo.
+
 ### Cálculo SUS
 
 Ítems impares (1, 3, 5, 7, 9) aportan `r − 1`; pares (2, 4, 6, 8, 10) aportan `5 − r`. La suma (0–40) se multiplica por 2,5. Interpretación: `< 51` Pobre · `51–68` Aceptable bajo · `68–80,3` Bueno · `> 80,3` Excelente. Implementado en `app/services/sus.py`.
@@ -284,7 +369,7 @@ Mide la **retención** del aprendizaje (post-test diferido).
 
 - **Contraseñas**: bcrypt con sal por contraseña (se limita a 72 bytes, el máximo de bcrypt).
 - **Sesión**: JWT HS256 firmado con `SECRET_KEY`, con expiración (`TOKEN_EXPIRA_HORAS`). Si falta la clave, el servidor se niega a emitir tokens.
-- **Autorización**: dependencias `usuario_actual` y `requiere_docente`; comprobación de propiedad en cada recurso (cuestionario, pregunta, intento, tarea).
+- **Autorización**: dependencias `usuario_actual`, `requiere_docente` y, desde el Sprint 6, `requiere_rol`/`requiere_admin`/`requiere_coordinacion`/`requiere_seguimiento` (403 si el rol no corresponde); el coordinador solo accede a su programa y el docente a sus grupos; comprobación de propiedad en cada recurso (cuestionario, pregunta, intento, tarea).
 - **Calificación en servidor**: el cliente nunca recibe `respuesta_correcta` ni `explicacion` hasta responder (salvo el creador); las respuestas se comparan normalizadas (minúsculas y espacios).
 - **Validación de entradas**: Pydantic en todos los cuerpos (rangos, longitudes, coherencia de las preguntas, marcas `mm:ss`, SUS 1–5).
 - **Medios**: los archivos se guardan con nombre aleatorio `uuid.ext`, solo extensiones permitidas, tamaño máximo configurable y lectura por trozos; el endpoint de descarga acepta únicamente nombres con ese patrón (impide *path traversal*).
@@ -315,6 +400,7 @@ cd backend
 - `tests/conftest.py`: BD SQLite temporal por prueba, `get_db` sobrescrito, `SessionLocal` y `CARPETA_SUBIDAS` parcheados (las tareas en segundo plano usan la BD de prueba) y *mocks* de transcripción y `generar_con_respaldo`.
 - `tests/test_unitarias.py`: `extraer_video_id`, SUS, normalización, adaptador de IA (respaldo, reintentos) y selección de idioma de Whisper.
 - `tests/test_sprint5.py`: `identificar_video` (YouTube/Vimeo/inválidos), rechazo de transmisiones en vivo y de videos largos (con `yt_dlp` simulado), repaso diferido con fechas simuladas (se manipula `disponible_desde`), intento diferido sin retroalimentación, retención, modo control, duplicar, comparación (valores conocidos de media, desviación y d de Cohen), tiempo de edición y ahorro, consentimiento, mis datos, eliminación de cuenta, CSV de investigación y migración de una BD anterior.
+- `tests/test_sprint6.py`: roles y permisos (403 por rol), CRUD de la estructura académica, grupos y matrícula con código, visibilidad de cuestionarios por curso, RA y Bloom por pregunta, esquema de la IA con `nivel_bloom`, logro por RA con datos conocidos y semáforo, alcance del coordinador/admin, filtro por periodo, cada regla de alerta (y «atendida»), PDFs (`%PDF`) y migración de columnas.
 - `tests/test_api.py`: autenticación, procesamiento, visibilidad, intentos, edición, permisos, códigos, resultados/ganancia, CSV, medios, borrado de archivos, estadísticas y SUS.
 
 Frontend: `npm run lint` y `npm run build`.
@@ -340,19 +426,23 @@ plataforma-aprendizaje-ia/
 │   │   ├── seguridad.py       # bcrypt, JWT, dependencias de auth
 │   │   ├── schemas.py         # esquemas del adaptador de IA
 │   │   ├── schemas_api.py     # esquemas de la API
-│   │   ├── routers/           # auth, procesar, cuestionarios, intentos, docente, comparar, medios, estadisticas, sus
+│   │   ├── routers/           # auth, procesar, cuestionarios, intentos, docente, comparar, medios, estadisticas, sus, admin, cursos, coordinacion
 │   │   └── services/
 │   │       ├── transcripcion.py
 │   │       ├── sus.py
 │   │       ├── estadistica.py   # media, desviación, d de Cohen, retención por estudiante
 │   │       ├── repasos.py
+│   │       ├── logro.py         # logro por RA / Bloom / asignatura / tendencia
+│   │       ├── alertas.py       # alertas tempranas explicables
+│   │       ├── reportes_pdf.py  # reportes PDF institucionales (reportlab)
 │   │       └── ia/            # base, gemini, groq_llm, ollama, respaldo
 │   ├── scripts/crear_demo.py  # cuentas demo
+│   ├── scripts/sembrar_estructura.py  # facultad, programa, asignaturas, RA de ejemplo, coordinador/admin demo y grupo (idempotente)
 │   ├── tests/
 │   └── subidas/               # archivos subidos (no se versiona)
 └── frontend/
     └── src/
-        ├── app/               # páginas: /, login, registro, cuestionarios, historial, unirse, c/[codigo], panel, encuesta, comparar, cuenta, privacidad
+        ├── app/               # páginas: /, login, registro, cuestionarios, historial, unirse, c/[codigo], panel, encuesta, comparar, cuenta, privacidad, mis-cursos, cursos, coordinacion, admin
         ├── components/
         └── lib/
 ```
