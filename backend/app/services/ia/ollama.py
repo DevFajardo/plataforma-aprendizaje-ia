@@ -3,7 +3,7 @@ import httpx
 
 from app.config import settings
 from app.schemas import ResultadoIA
-from app.services.ia.base import ProveedorIA, construir_prompt
+from app.services.ia.base import ProveedorIA, T, construir_prompt
 
 
 class ProveedorOllama(ProveedorIA):
@@ -28,3 +28,17 @@ class ProveedorOllama(ProveedorIA):
         )
         r.raise_for_status()
         return ResultadoIA.model_validate_json(r.json()["message"]["content"])
+
+    def completar_json(self, prompt: str, esquema: type[T]) -> T:
+        r = httpx.post(
+            f"{settings.ollama_url.rstrip('/')}/api/chat",
+            json={
+                "model": settings.ollama_model,
+                "messages": [{"role": "user", "content": prompt}],
+                "format": esquema.model_json_schema(),
+                "stream": False,
+            },
+            timeout=httpx.Timeout(600.0, connect=5.0),
+        )
+        r.raise_for_status()
+        return esquema.model_validate_json(r.json()["message"]["content"])

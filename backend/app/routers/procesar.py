@@ -16,6 +16,7 @@ from app.schemas import Transcripcion
 from app.schemas_api import ProcesarIn, TareaOut
 from app.seguridad import usuario_actual
 from app.services.ia import generar_con_respaldo
+from app.services.verificacion import verificar_preguntas
 from app.services.transcripcion import identificar_video, obtener_transcripcion, transcribir_subida
 
 log = logging.getLogger(__name__)
@@ -77,6 +78,11 @@ def _generar_y_guardar(db: Session, tarea: Tarea, video: Video, transcripcion: T
     )
     db.add(cuestionario)
     db.flush()
+    # Verificación de calidad en lote (una llamada). Si la IA falla, el cuestionario queda listo y «sin verificar».
+    tarea.mensaje = "Verificando la calidad de las preguntas…"
+    db.commit()
+    verificar_preguntas(transcripcion, list(cuestionario.preguntas))
+    cuestionario.segundos_generacion = max(0, int((ahora() - como_utc(tarea.creado_en)).total_seconds()))
     tarea.proveedor_ia = proveedor
     tarea.cuestionario_id = cuestionario.id
     tarea.estado = "listo"

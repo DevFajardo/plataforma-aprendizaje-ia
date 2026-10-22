@@ -15,10 +15,12 @@ from app.schemas_api import (
     IntentoResumen,
     RepasoOut,
     RespuestaIn,
+    CalificacionIAOut,
     RespuestaOut,
     RevisionPregunta,
 )
 from app.seguridad import usuario_actual
+from app.services.calificacion import calcular_puntaje, calificar_abierta
 from app.services.repasos import esta_vencido, repaso_pendiente
 
 router = APIRouter(prefix="/api", tags=["intentos"])
@@ -118,16 +120,24 @@ def responder(intento_id: int, datos: RespuestaIn, usuario: Usuario = Depends(us
     if any(r["pregunta_id"] == pregunta.id for r in respuestas):
         raise HTTPException(status_code=409, detail="Ya respondiste esta pregunta en este intento.")
 
+    registro = {"pregunta_id": pregunta.id, "respuesta": datos.respuesta}
+    sugerida = None
     if pregunta.tipo == "abierta":
         correcta = None
+        # Nota sugerida por la IA (no cuenta hasta que el docente la apruebe); si la IA falla, simplemente no hay sugerencia
+        sugerida = calificar_abierta(pregunta.enunciado, pregunta.respuesta_correcta, pregunta.explicacion, datos.respuesta)
     else:
         correcta = _normalizar(datos.respuesta) == _normalizar(pregunta.respuesta_correcta)
-    respuestas.append({"pregunta_id": pregunta.id, "respuesta": datos.respuesta, "correcta": correcta})
+    registro["correcta"] = correcta
+    if sugerida:
+        registro["ia"] = sugerida
+    respuestas.append(registro)
     intento.respuestas_json = json.dumps(respuestas, ensure_ascii=False)
     db.commit()
     if not _con_feedback(intento):
         return RespuestaOut(registrada=True, con_feedback=False)
     return RespuestaOut(
+        calificacion_ia=CalificacionIAOut(**{k: v for k, v in sugerida.items() if k != "proveedor"}) if sugerida else None,
         correcta=correcta,
         respuesta_correcta=pregunta.respuesta_correcta,
         explicacion=pregunta.explicacion,
@@ -141,8 +151,7 @@ def finalizar(intento_id: int, usuario: Usuario = Depends(usuario_actual), db: S
     c = intento.cuestionario
     if not intento.finalizado:
         respuestas = json.loads(intento.respuestas_json)
-        intento.puntaje = sum(1 for r in respuestas if r["correcta"] is True)
-        intento.total = sum(1 for p in c.preguntas if p.tipo != "abierta")
+        intento.puntaje, intento.total = calcular_puntaje(respuestas, c.preguntas)
         intento.finalizado = True
 
         if intento.tipo == "diferido":

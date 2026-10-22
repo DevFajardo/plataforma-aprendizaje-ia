@@ -243,6 +243,35 @@ def reporte_cuestionario_pdf(r: ResultadosOut, programa: str, asignatura: str, g
         ])
     h.append(_tabla(filas, [8 * mm, 74 * mm, 12 * mm, 22 * mm, 17 * mm, 25 * mm], (4,)))
 
+    h.append(Paragraph("Análisis de ítems (psicometría clásica)", est["h2"]))
+    h.append(_p(f"Calculado con {r.items_intentos} intento(s) inicial(es) finalizado(s). p = índice de dificultad; D = discriminación "
+                f"(27 % superior vs. inferior); r_pb = correlación punto-biserial. Se muestran índices con al menos {r.items_minimo} respuestas.", est["nota"]))
+    if r.items:
+        f_items = [["#", "Pregunta", "n", "p", "D", "r_pb", "Interpretación"]]
+        for it in r.items:
+            if not it.suficiente:
+                f_items.append([str(it.orden + 1), _p(it.enunciado[:110], est["celda"]), str(it.n), "—", "—", "—", _p("Datos insuficientes", est["celda"])])
+                continue
+            interpretacion = " · ".join(x for x in (it.dificultad, it.discriminacion) if x)
+            if it.revisar:
+                interpretacion = "REVISAR: " + interpretacion
+            for dis in it.distractores:
+                if dis.confunde_mejores:
+                    interpretacion += f". Opción {dis.letra} confunde a los mejores"
+            no_func = [d.letra for d in it.distractores if d.funcional is False]
+            if no_func:
+                interpretacion += f". Distractor no funcional: {', '.join(no_func)}"
+            f_items.append([
+                str(it.orden + 1), _p(it.enunciado[:110], est["celda"]), str(it.n),
+                "—" if it.p is None else f"{it.p:.2f}".replace(".", ","),
+                "—" if it.d is None else f"{it.d:.2f}".replace(".", ","),
+                "—" if it.r_pb is None else f"{it.r_pb:.2f}".replace(".", ","),
+                _p(interpretacion, est["celda"]),
+            ])
+        h.append(_tabla(f_items, [7 * mm, 54 * mm, 8 * mm, 11 * mm, 11 * mm, 12 * mm, 71 * mm], (2, 3, 4, 5)))
+    else:
+        h.append(_p("El cuestionario no tiene preguntas cerradas para analizar.", est["p"]))
+
     g, ret = r.ganancia, r.retencion
     h.append(Paragraph("Ganancia de aprendizaje y retención", est["h2"]))
     if g.estudiantes:

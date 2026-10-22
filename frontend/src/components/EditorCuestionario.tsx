@@ -10,6 +10,7 @@ import {
   enviarTiempoEdicion,
   reordenarPreguntas,
 } from "@/lib/api";
+import { DetalleVerificacion, GuardarEnBanco, SelloVerificacion } from "./CalidadPregunta";
 import { Aviso, Boton, ConfirmacionEnLinea, EncabezadoPagina, Icono, Input, Insignia, Select, Tarjeta, Textarea, TituloSeccion } from "./ui";
 import { NIVELES_BLOOM, type CuestionarioDetalle, type EntradaPregunta, type NivelBloom, type Pregunta, type TipoPregunta } from "@/lib/tipos";
 
@@ -140,6 +141,8 @@ export default function EditorCuestionario({ cuestionario: c, onTerminar }: Prop
   const [eliminados, setEliminados] = useState<number[]>([]);
   const [porEliminar, setPorEliminar] = useState<string | null>(null); // clave con confirmación abierta
   const [guardando, setGuardando] = useState(false);
+  const [soloRevisar, setSoloRevisar] = useState(false);
+  const originales = new Map(c.preguntas.map((p) => [p.id, p]));
   const [mensaje, setMensaje] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
 
   function cambiar(clave: string, parche: Partial<Borrador>) {
@@ -262,7 +265,17 @@ export default function EditorCuestionario({ cuestionario: c, onTerminar }: Prop
 
       <section className="flex flex-col gap-4">
         <TituloSeccion>Preguntas ({preguntas.length})</TituloSeccion>
-        {preguntas.map((b, i) => (
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
+          <input type="checkbox" checked={soloRevisar} onChange={(e) => setSoloRevisar(e.target.checked)} className="h-5 w-5 accent-primario" />
+          Ver solo las que requieren revisión
+        </label>
+        {soloRevisar && !preguntas.some((b) => b.id !== null && originales.get(b.id)?.verificacion?.estado === "revisar") && (
+          <p className="text-sm text-suave">Ninguna pregunta requiere revisión.</p>
+        )}
+        {preguntas.map((b, i) => {
+          const original = b.id !== null ? originales.get(b.id) : undefined;
+          if (soloRevisar && original?.verificacion?.estado !== "revisar") return null;
+          return (
           <Tarjeta as="article" key={b.clave} className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="flex items-center gap-2 font-bold">
@@ -285,6 +298,16 @@ export default function EditorCuestionario({ cuestionario: c, onTerminar }: Prop
                 </Boton>
               </div>
             </div>
+
+            {original && (
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SelloVerificacion v={original.verificacion} />
+                  <GuardarEnBanco pregunta={original} tieneGrupo={!!c.grupo_id} />
+                </div>
+                <DetalleVerificacion v={original.verificacion} />
+              </div>
+            )}
 
             {porEliminar === b.clave && (
               <ConfirmacionEnLinea
@@ -423,7 +446,8 @@ export default function EditorCuestionario({ cuestionario: c, onTerminar }: Prop
               </Select>
             </div>
           </Tarjeta>
-        ))}
+          );
+        })}
 
         <Boton variante="secundario" onClick={nuevaPregunta} className="self-start">
           <Icono nombre="mas" /> Añadir pregunta

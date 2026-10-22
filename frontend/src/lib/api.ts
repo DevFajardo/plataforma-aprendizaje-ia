@@ -33,6 +33,12 @@ import type {
   PaginaNotificaciones,
   SesionVivoInfo,
   UnidoVivo,
+  EstadoTutor,
+  FiltrosBanco,
+  PaginaBanco,
+  PreguntaBanco,
+  RespuestaTutor,
+  TranscripcionVideo,
 } from "./tipos";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -436,3 +442,67 @@ export const contarNotificaciones = () => peticion<{ no_leidas: number }>("/api/
 export const marcarNotificacionLeida = (id: number) => post<{ no_leidas: number }>(`/api/notificaciones/${id}/leer`);
 
 export const marcarTodasLeidas = () => post<{ no_leidas: number }>("/api/notificaciones/leer-todas");
+
+// ---------- Sprint 8: tutor IA, calidad, banco y accesibilidad ----------
+
+export const estadoTutor = (cuestionarioId: number) => peticion<EstadoTutor>(`/api/cuestionarios/${cuestionarioId}/tutor`);
+
+export const preguntarAlTutor = (cuestionarioId: number, pregunta: string) =>
+  post<RespuestaTutor>(`/api/cuestionarios/${cuestionarioId}/tutor`, { pregunta });
+
+export const nuevaConversacionTutor = (cuestionarioId: number) =>
+  post<EstadoTutor>(`/api/cuestionarios/${cuestionarioId}/tutor/nueva`);
+
+export const verificarCalidad = (cuestionarioId: number) =>
+  post<{ verificadas: number; total: number }>(`/api/cuestionarios/${cuestionarioId}/verificar`);
+
+export const calificarAbierta = (intentoId: number, preguntaId: number, nota: number) =>
+  enviar<IntentoResumen>("PUT", `/api/intentos/${intentoId}/abiertas/${preguntaId}/nota`, { nota });
+
+export const guardarEnBanco = (
+  preguntaId: number,
+  datos: { visibilidad: "institucional" | "privada"; etiquetas: string[]; asignatura_nombre?: string },
+) => post<PreguntaBanco>(`/api/preguntas/${preguntaId}/banco`, datos);
+
+export interface FiltroBanco {
+  q?: string;
+  asignatura?: string;
+  ra?: string;
+  bloom?: string;
+  tipo?: string;
+  verificacion?: string;
+  solo_mias?: boolean;
+  pagina?: number;
+}
+
+export function buscarBanco(f: FiltroBanco) {
+  const q = new URLSearchParams();
+  for (const [clave, valor] of Object.entries(f)) if (valor !== undefined && valor !== "" && valor !== false) q.set(clave, String(valor));
+  return peticion<PaginaBanco>(`/api/banco${q.size ? `?${q}` : ""}`);
+}
+
+export const filtrosBanco = () => peticion<FiltrosBanco>("/api/banco/filtros");
+
+export const editarBanco = (id: number, datos: { visibilidad?: "institucional" | "privada"; etiquetas?: string[] }) =>
+  enviar<PreguntaBanco>("PATCH", `/api/banco/${id}`, datos);
+
+export const eliminarDelBanco = (id: number) => borrar(`/api/banco/${id}`);
+
+export const agregarDesdeBanco = (bancoId: number, cuestionarioId: number) =>
+  post<{ pregunta_id: number; cuestionario_id: number; num_preguntas: number }>(`/api/banco/${bancoId}/agregar`, {
+    cuestionario_id: cuestionarioId,
+  });
+
+export const obtenerTranscripcion = (videoId: number) => peticion<TranscripcionVideo>(`/api/videos/${videoId}/transcripcion`);
+
+/** Descarga los subtítulos WebVTT con el token y devuelve una URL de objeto para usarla en <track>. */
+export async function urlSubtitulos(videoId: number): Promise<string> {
+  const token = leerToken();
+  const resp = await fetch(`${API_URL}/api/videos/${videoId}/subtitulos.vtt`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!resp.ok) throw new Error("No se pudieron cargar los subtítulos.");
+  return URL.createObjectURL(await resp.blob());
+}
+
+export const descargarTranscripcion = (videoId: number) => descargarArchivo(`/api/videos/${videoId}/transcripcion.txt`, `transcripcion_${videoId}.txt`);
+
+export const descargarSubtitulos = (videoId: number) => descargarArchivo(`/api/videos/${videoId}/subtitulos.vtt`, `subtitulos_${videoId}.vtt`);

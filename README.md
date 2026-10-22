@@ -137,6 +137,7 @@ Idempotente (solo añade lo que falta): Facultad de Ingeniería → programa «I
 | `SECRET_KEY` | Clave para firmar los JWT (obligatoria) | — |
 | `TOKEN_EXPIRA_HORAS` | Vigencia de la sesión | `72` |
 | `LIMITE_DIARIO_PROCESAMIENTOS` | Videos por usuario cada 24 h | `20` |
+| `LIMITE_TUTOR_DIARIO` | Mensajes al tutor IA del video por usuario cada 24 h | `30` |
 | `MAX_SUBIDA_MB` | Tamaño máximo de archivo subido | `200` |
 | `MAX_DURACION_MIN` | Duración máxima (min) de videos de YouTube/Vimeo transcritos con audio + Whisper | `180` |
 

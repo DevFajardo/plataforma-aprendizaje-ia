@@ -19,16 +19,17 @@ const CUESTIONARIOS: Enlace = { href: "/cuestionarios", texto: "Mis cuestionario
 const UNIRSE: Enlace = { href: "/unirse", texto: "Unirse" };
 const HISTORIAL: Enlace = { href: "/historial", texto: "Historial" };
 const ENCUESTA: Enlace = { href: "/encuesta", texto: "Encuesta" };
+const BANCO: Enlace = { href: "/banco", texto: "Banco" };
 
 /** Enlaces del menú según el rol del usuario. */
 function enlacesPorRol(rol: string): Enlace[] {
   switch (rol) {
     case "docente":
-      return [PANEL, GENERAR, CUESTIONARIOS, { href: "/cursos", texto: "Cursos" }, UNIRSE, HISTORIAL, ENCUESTA, { href: "/comparar", texto: "Comparar" }];
+      return [PANEL, GENERAR, CUESTIONARIOS, { href: "/cursos", texto: "Cursos" }, BANCO, UNIRSE, HISTORIAL, ENCUESTA, { href: "/comparar", texto: "Comparar" }];
     case "coordinador":
-      return [PANEL, { href: "/coordinacion", texto: "Coordinación" }, ENCUESTA];
+      return [PANEL, { href: "/coordinacion", texto: "Coordinación" }, BANCO, ENCUESTA];
     case "admin":
-      return [PANEL, { href: "/admin", texto: "Admin" }, { href: "/coordinacion", texto: "Coordinación" }, { href: "/cursos", texto: "Cursos" }, ENCUESTA];
+      return [PANEL, { href: "/admin", texto: "Admin" }, { href: "/coordinacion", texto: "Coordinación" }, { href: "/cursos", texto: "Cursos" }, BANCO, ENCUESTA];
     default:
       return [PANEL, GENERAR, CUESTIONARIOS, { href: "/mis-cursos", texto: "Mis cursos" }, UNIRSE, HISTORIAL, ENCUESTA];
   }
@@ -93,7 +94,7 @@ export default function Navbar() {
   const claseEnlace = (href: string, movil: boolean) =>
     cx(
       "relative flex items-center rounded-lg text-sm font-semibold transition duration-150",
-      movil ? "min-h-12 px-4 text-base" : "min-h-10 px-2.5 2xl:px-3.5",
+      movil ? "min-h-12 px-4 text-base" : "min-h-10 whitespace-nowrap px-1.5 2xl:px-3.5",
       esActivo(href) ? "bg-white/15 text-white" : "text-white/85 hover:bg-white/10 hover:text-white",
     );
 
@@ -102,8 +103,8 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b-4 border-cul-naranja bg-barra-superior text-white shadow-md">
       <nav aria-label="Principal" className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        <Link href="/" aria-label="Aprendizaje Activo CUL, ir al inicio" className="min-w-0 rounded-md">
-          <MarcaInstitucional titulo="Aprendizaje Activo" />
+        <Link href="/" aria-label="Aprendizaje Activo CUL, ir al inicio" className="min-w-0 rounded-md xl:shrink-0">
+          <MarcaInstitucional titulo="Aprendizaje Activo" subtituloClase="xl:max-2xl:hidden" />
         </Link>
 
         {/* Navegación de escritorio */}

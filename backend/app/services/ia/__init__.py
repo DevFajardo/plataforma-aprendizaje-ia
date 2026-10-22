@@ -1,11 +1,15 @@
 """Orquestación de proveedores de IA con respaldo (fallback) automático."""
 import logging
 import time
+from collections.abc import Callable
+from typing import TypeVar
 
 import httpx
 
 from app.config import settings
 from app.schemas import ResultadoIA
+from pydantic import BaseModel
+
 from app.services.ia.base import ProveedorIA
 from app.services.ia.gemini import ProveedorGemini
 from app.services.ia.groq_llm import ProveedorGroq
@@ -43,12 +47,16 @@ def _es_transitorio(e: Exception) -> bool:
     return "timeout" in nombre or "connection" in nombre
 
 
-def _generar_con_reintentos(proveedor: ProveedorIA, nombre: str, texto: str, num_preguntas: int) -> ResultadoIA:
+R = TypeVar("R")
+BM = TypeVar("BM", bound=BaseModel)
+
+
+def _con_reintentos(nombre: str, operacion: Callable[[], R]) -> R:
     """Reintenta (2 s y 5 s) solo ante errores transitorios; otros errores se propagan."""
     intento = 0
     while True:
         try:
-            return proveedor.generar(texto, num_preguntas)
+            return operacion()
         except Exception as e:
             if nombre == "ollama" or intento >= len(ESPERAS_REINTENTO) or not _es_transitorio(e):
                 raise
@@ -58,22 +66,22 @@ def _generar_con_reintentos(proveedor: ProveedorIA, nombre: str, texto: str, num
             time.sleep(espera)
 
 
+def _generar_con_reintentos(proveedor: ProveedorIA, nombre: str, texto: str, num_preguntas: int) -> ResultadoIA:
+    return _con_reintentos(nombre, lambda: proveedor.generar(texto, num_preguntas))
+
+
 def proveedores_configurados() -> dict[str, bool]:
     """Estado (configurado o no) de cada proveedor conocido."""
     return {n: c().configurado() for n, c in PROVEEDORES.items()}
 
 
-def generar_con_respaldo(texto: str, num_preguntas: int) -> tuple[ResultadoIA, str]:
+def _recorrer_proveedores(operacion: Callable[[ProveedorIA, str], R]) -> tuple[R, str]:
     """Prueba los proveedores en el orden de settings.lista_proveedores.
 
     Salta los que no tienen clave, captura errores y pasa al siguiente.
     Ollama (local, sin clave) solo se intenta si está en la lista y su URL
     responde; si no está levantado, falla rápido y se registra.
     """
-    if len(texto) > MAX_CARACTERES:
-        log.warning("Transcripción de %d caracteres truncada a %d", len(texto), MAX_CARACTERES)
-        texto = texto[:MAX_CARACTERES]
-
     fallos: list[str] = []
     for nombre in settings.lista_proveedores:
         clase = PROVEEDORES.get(nombre)
@@ -85,7 +93,7 @@ def generar_con_respaldo(texto: str, num_preguntas: int) -> tuple[ResultadoIA, s
             log.info("Proveedor %s sin clave; se omite", nombre)
             continue
         try:
-            return _generar_con_reintentos(proveedor, nombre, texto, num_preguntas), nombre
+            return _con_reintentos(nombre, lambda: operacion(proveedor, nombre)), nombre
         except httpx.ConnectError:
             log.info("Proveedor %s no disponible (sin conexión); se omite", nombre)
         except Exception as e:
@@ -94,3 +102,16 @@ def generar_con_respaldo(texto: str, num_preguntas: int) -> tuple[ResultadoIA, s
     if not fallos:
         raise RuntimeError(MSG_SIN_PROVEEDORES)
     raise RuntimeError("Todos los proveedores de IA fallaron. " + " | ".join(fallos))
+
+
+def generar_con_respaldo(texto: str, num_preguntas: int) -> tuple[ResultadoIA, str]:
+    """Genera resumen y cuestionario con el primer proveedor que responda."""
+    if len(texto) > MAX_CARACTERES:
+        log.warning("Transcripción de %d caracteres truncada a %d", len(texto), MAX_CARACTERES)
+        texto = texto[:MAX_CARACTERES]
+    return _recorrer_proveedores(lambda p, _n: p.generar(texto, num_preguntas))
+
+
+def ejecutar_con_respaldo(prompt: str, esquema: type[BM]) -> tuple[BM, str]:
+    """Tarea genérica de IA (tutor, calificación, verificación…): devuelve (objeto validado, proveedor)."""
+    return _recorrer_proveedores(lambda p, _n: p.completar_json(prompt, esquema))

@@ -49,6 +49,18 @@ export interface Pregunta {
   // Sprint 6 (solo el creador): resultado de aprendizaje y nivel de Bloom
   ra_id?: number | null;
   nivel_bloom?: NivelBloom | null;
+  // Sprint 8 (solo el creador): verificación de calidad con IA (null/ausente = sin verificar) y vínculo con el banco
+  verificacion?: Verificacion | null;
+  banco_id?: number | null;
+}
+
+export interface Verificacion {
+  estado: "verificada" | "revisar";
+  respaldo: "si" | "parcial" | "no";
+  cita: string;
+  marca_tiempo: string;
+  inequivoca: boolean;
+  problemas: string[];
 }
 
 export type NivelBloom = "recordar" | "comprender" | "aplicar" | "analizar" | "evaluar" | "crear";
@@ -56,6 +68,7 @@ export const NIVELES_BLOOM: NivelBloom[] = ["recordar", "comprender", "aplicar",
 
 export interface CuestionarioDetalle {
   id: number;
+  video_id: number;
   titulo: string;
   resumen: string;
   ideas_clave: string[];
@@ -139,7 +152,51 @@ export interface PreguntaResultado {
   enunciado: string;
   num_respuestas: number;
   porcentaje_acierto: number | null;
-  respuestas_abiertas: { nombre: string; respuesta: string }[];
+  respuestas_abiertas: RespuestaAbierta[];
+}
+
+export type NivelCalificacion = "insuficiente" | "basico" | "bueno" | "excelente";
+
+export interface CalificacionIA {
+  puntaje: number;
+  nivel: NivelCalificacion;
+  retroalimentacion: string;
+  falto: string;
+}
+
+export interface RespuestaAbierta {
+  intento_id: number | null;
+  nombre: string;
+  respuesta: string;
+  sugerida: CalificacionIA | null;
+  nota_final: number | null; // aprobada o ajustada por el docente
+}
+
+export interface Distractor {
+  opcion: string;
+  letra: string;
+  correcta: boolean;
+  porcentaje: number;
+  porcentaje_superior: number | null;
+  porcentaje_inferior: number | null;
+  funcional: boolean | null;
+  confunde_mejores: boolean;
+}
+
+export interface ItemAnalisis {
+  pregunta_id: number;
+  orden: number;
+  enunciado: string;
+  n: number;
+  suficiente: boolean;
+  p: number | null;
+  d: number | null;
+  r_pb: number | null;
+  dificultad: string;
+  discriminacion: string;
+  distractores: Distractor[];
+  observaciones: string[];
+  revisar: boolean;
 }
 
 export interface Resultados {
@@ -152,6 +209,9 @@ export interface Resultados {
   ganancia: GananciaAprendizaje;
   retencion: Retencion;
   modo: ModoCuestionario;
+  items: ItemAnalisis[];
+  items_minimo: number;
+  items_intentos: number;
 }
 
 export interface RespuestaServidor {
@@ -161,6 +221,7 @@ export interface RespuestaServidor {
   respuesta_correcta: string;
   explicacion: string;
   marca_tiempo: string;
+  calificacion_ia?: CalificacionIA | null; // solo preguntas abiertas con retroalimentación
 }
 
 export interface IntentoCreado {
@@ -566,4 +627,81 @@ export interface PaginaNotificaciones {
   pagina: number;
   por_pagina: number;
   no_leidas: number;
+}
+
+// ---------- Sprint 8: tutor IA, banco y transcripción ----------
+
+export interface CitaTutor {
+  marca_tiempo: string;
+  fragmento: string;
+}
+
+export interface MensajeTutor {
+  id: number;
+  rol: "usuario" | "tutor";
+  texto: string;
+  citas: CitaTutor[];
+  creado_en: string;
+}
+
+export interface EstadoTutor {
+  habilitado: boolean;
+  motivo: string;
+  conversacion_id: number | null;
+  mensajes: MensajeTutor[];
+  restantes: number;
+  limite: number;
+  sugerencias: string[];
+}
+
+export interface RespuestaTutor {
+  usuario: MensajeTutor;
+  tutor: MensajeTutor;
+  restantes: number;
+}
+
+export interface SegmentoTranscripcion {
+  inicio: number;
+  texto: string;
+}
+
+export interface TranscripcionVideo {
+  idioma: string;
+  fuente: string;
+  segmentos: SegmentoTranscripcion[];
+}
+
+export type EstadoVerificacion = "verificada" | "revisar" | "sin_verificar";
+
+export interface PreguntaBanco {
+  id: number;
+  autor: string;
+  es_mia: boolean;
+  visibilidad: "institucional" | "privada";
+  tipo: TipoPregunta;
+  enunciado: string;
+  opciones: string[];
+  respuesta_correcta: string;
+  explicacion: string;
+  nivel_bloom: NivelBloom | null;
+  ra_codigo: string | null;
+  ra_descripcion: string | null;
+  asignatura_nombre: string | null;
+  etiquetas: string[];
+  verificacion: Verificacion | null;
+  estado_verificacion: EstadoVerificacion;
+  estadisticas: { respuestas: number; porcentaje_acierto: number | null; usos: number } | null;
+  creado_en: string;
+}
+
+export interface PaginaBanco {
+  total: number;
+  pagina: number;
+  por_pagina: number;
+  items: PreguntaBanco[];
+}
+
+export interface FiltrosBanco {
+  asignaturas: string[];
+  ras: string[];
 }

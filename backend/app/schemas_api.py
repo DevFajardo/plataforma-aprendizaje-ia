@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timezone
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator, model_serializer, model_validator
 
 
 def _a_utc(v: datetime) -> datetime:
@@ -86,6 +86,58 @@ class TareaOut(BaseModel):
     cuestionario_id: int | None = None
 
 
+# ---------- Sprint 8: modelos compartidos ----------
+
+# ---------- Verificación de calidad ----------
+
+class VerificacionOut(BaseModel):
+    estado: Literal["verificada", "revisar"]
+    respaldo: Literal["si", "parcial", "no"]
+    cita: str = ""
+    marca_tiempo: str = ""
+    inequivoca: bool = True
+    problemas: list[str] = []
+
+
+# ---------- Calificación de abiertas ----------
+
+class CalificacionIAOut(BaseModel):
+    puntaje: int
+    nivel: Literal["insuficiente", "basico", "bueno", "excelente"]
+    retroalimentacion: str
+    falto: str = ""
+
+
+# ---------- Psicometría ----------
+
+class DistractorOut(BaseModel):
+    opcion: str
+    letra: str
+    correcta: bool
+    porcentaje: float
+    porcentaje_superior: float | None = None
+    porcentaje_inferior: float | None = None
+    funcional: bool | None = None
+    confunde_mejores: bool = False
+
+
+class ItemAnalisisOut(BaseModel):
+    pregunta_id: int
+    orden: int
+    enunciado: str
+    n: int
+    suficiente: bool
+    p: float | None = None
+    d: float | None = None
+    r_pb: float | None = None
+    dificultad: str = ""
+    discriminacion: str = ""
+    distractores: list[DistractorOut] = []
+    observaciones: list[str] = []
+    revisar: bool = False
+
+
+
 # ---------- Cuestionarios ----------
 
 class PreguntaOut(BaseModel):
@@ -100,6 +152,8 @@ class PreguntaOut(BaseModel):
     explicacion: str | None = None
     ra_id: int | None = None
     nivel_bloom: str | None = None
+    verificacion: VerificacionOut | None = None  # solo el creador; None = sin verificar
+    banco_id: int | None = None  # solo el creador
 
 
 class RepasoEstado(BaseModel):
@@ -109,6 +163,7 @@ class RepasoEstado(BaseModel):
 
 class CuestionarioDetalle(BaseModel):
     id: int
+    video_id: int
     titulo: str
     resumen: str
     ideas_clave: list[str]
@@ -174,6 +229,16 @@ class RespuestaOut(BaseModel):
     respuesta_correcta: str = ""
     explicacion: str = ""
     marca_tiempo: str = ""
+    # Preguntas abiertas: calificación sugerida por la IA (no aparece en control ni en diferido, ni si la IA falla)
+    calificacion_ia: CalificacionIAOut | None = None
+
+    @model_serializer(mode="wrap")
+    def _omitir_calificacion_vacia(self, handler):
+        """Sin calificación de la IA la clave no se envía (la respuesta queda igual que antes del Sprint 8)."""
+        datos = handler(self)
+        if datos.get("calificacion_ia") is None:
+            datos.pop("calificacion_ia", None)
+        return datos
 
 
 class RevisionPregunta(BaseModel):
@@ -319,8 +384,11 @@ class IntentoResultado(BaseModel):
 
 
 class RespuestaAbiertaOut(BaseModel):
+    intento_id: int | None = None
     nombre: str
     respuesta: str
+    sugerida: CalificacionIAOut | None = None  # nota sugerida por la IA
+    nota_final: int | None = None  # nota aprobada/ajustada por el docente; None = pendiente
 
 
 class PreguntaResultado(BaseModel):
@@ -385,6 +453,10 @@ class ResultadosOut(BaseModel):
     preguntas: list[PreguntaResultado]
     ganancia: GananciaAprendizaje
     retencion: RetencionOut
+    # Análisis de ítems (intentos iniciales finalizados); se exige un mínimo de respuestas por pregunta
+    items: list[ItemAnalisisOut] = []
+    items_minimo: int = 5
+    items_intentos: int = 0
 
 
 # ---------- Comparación de grupos (cuasi-experimento) ----------

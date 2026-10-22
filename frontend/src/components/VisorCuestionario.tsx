@@ -1,11 +1,14 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
-import { crearIntento, finalizarIntento, responderPregunta, urlMedio } from "@/lib/api";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { crearIntento, finalizarIntento, responderPregunta, urlMedio, urlSubtitulos } from "@/lib/api";
 import { formatearFecha } from "@/lib/fechas";
 import type { CuestionarioDetalle, IntentoCreado, IntentoResumen, Pregunta } from "@/lib/tipos";
+import { PanelCalidad } from "./CalidadPregunta";
+import PanelTranscripcion from "./PanelTranscripcion";
 import PreguntaCard from "./PreguntaCard";
-import { Alerta, BarraPorcentaje, Boton, EncabezadoPagina, Icono, Insignia, Tarjeta, TituloSeccion, cx } from "./ui";
+import TutorChat from "./TutorChat";
+import { Alerta, BarraPorcentaje, Boton, EncabezadoPagina, Icono, Insignia, Pestanas, Tarjeta, TituloSeccion, cx } from "./ui";
 
 /** Convierte "mm:ss" (o "hh:mm:ss") en segundos; null si no es válido. */
 function aSegundos(marca: string): number | null {
@@ -61,10 +64,13 @@ function mensajePuntaje(p: number): string {
 export default function VisorCuestionario({
   cuestionario: c,
   panel,
+  onRecargar,
 }: {
   cuestionario: CuestionarioDetalle;
   /** Panel opcional (p. ej. controles del docente) que se muestra bajo el título. */
   panel?: ReactNode;
+  /** El docente pide volver a cargar el cuestionario (p. ej. tras verificar la calidad). */
+  onRecargar?: () => void;
 }) {
   const [srcVideo, setSrcVideo] = useState(urlReproductor(c));
   const videoRef = useRef<HTMLDivElement>(null);
@@ -81,6 +87,31 @@ export default function VisorCuestionario({
   const [error, setError] = useState<string | null>(null);
   // Cambiarlo remonta las tarjetas de preguntas (nuevo intento)
   const [ronda, setRonda] = useState(0);
+  const [panelIzq, setPanelIzq] = useState<"resumen" | "tutor" | "transcripcion">("resumen");
+  // Subtítulos accesibles del reproductor HTML5 (se descargan con el token y se sirven como URL de objeto)
+  const [subtitulos, setSubtitulos] = useState<string | null>(null);
+  const [tiempoActual, setTiempoActual] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!esArchivo) return;
+    let url: string | null = null;
+    let cancelado = false;
+    urlSubtitulos(c.video_id)
+      .then((u) => {
+        if (cancelado) URL.revokeObjectURL(u);
+        else {
+          url = u;
+          setSubtitulos(u);
+        }
+      })
+      .catch(() => {
+        /* sin subtítulos: el reproductor funciona igual */
+      });
+    return () => {
+      cancelado = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [esArchivo, c.video_id]);
 
   function saltar(segundos: number) {
     if (esArchivo) {
@@ -162,10 +193,20 @@ export default function VisorCuestionario({
                   src={urlMedio(c.archivo_url)}
                   controls
                   preload="metadata"
+                  onTimeUpdate={(e) => setTiempoActual(e.currentTarget.currentTime)}
                   className="aspect-video w-full rounded-2xl bg-black shadow-tarjeta"
-                />
+                >
+                  {subtitulos && <track kind="captions" srcLang="es" label="Español" src={subtitulos} default />}
+                </video>
               ) : (
-                <audio ref={mediaRef} src={urlMedio(c.archivo_url)} controls preload="metadata" className="w-full" />
+                <audio
+                  ref={mediaRef}
+                  src={urlMedio(c.archivo_url)}
+                  controls
+                  preload="metadata"
+                  onTimeUpdate={(e) => setTiempoActual(e.currentTarget.currentTime)}
+                  className="w-full"
+                />
               )}
             </div>
           )}
@@ -185,21 +226,40 @@ export default function VisorCuestionario({
 
           {!soloPreguntas && (
             <Tarjeta className="scroll-fino flex flex-col gap-5 lg:min-h-0 lg:overflow-y-auto">
-              <section>
-                <TituloSeccion nivel={3}>Resumen</TituloSeccion>
-                <p className="mt-3 whitespace-pre-line leading-relaxed text-suave">{c.resumen}</p>
-              </section>
-              <section>
-                <TituloSeccion nivel={3}>Ideas clave</TituloSeccion>
-                <ul className="mt-3 flex flex-col gap-2">
-                  {c.ideas_clave.map((idea, i) => (
-                    <li key={i} className="flex items-start gap-3 text-suave">
-                      <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full bg-cul-naranja" />
-                      <span>{idea}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              <Pestanas
+                etiqueta="Material de estudio"
+                items={[
+                  { id: "resumen", texto: "Resumen" },
+                  { id: "tutor", texto: "Pregúntale al video" },
+                  { id: "transcripcion", texto: "Transcripción" },
+                ]}
+                activa={panelIzq}
+                onCambiar={setPanelIzq}
+              >
+                {panelIzq === "resumen" && (
+                  <div className="flex flex-col gap-5">
+                    <section>
+                      <TituloSeccion nivel={3}>Resumen</TituloSeccion>
+                      <p className="mt-3 whitespace-pre-line leading-relaxed text-suave">{c.resumen}</p>
+                    </section>
+                    <section>
+                      <TituloSeccion nivel={3}>Ideas clave</TituloSeccion>
+                      <ul className="mt-3 flex flex-col gap-2">
+                        {c.ideas_clave.map((idea, i) => (
+                          <li key={i} className="flex items-start gap-3 text-suave">
+                            <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full bg-cul-naranja" />
+                            <span>{idea}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  </div>
+                )}
+                {panelIzq === "tutor" && (
+                  <TutorChat cuestionarioId={c.id} onSaltar={saltar} claveRefresco={`${intento?.id ?? 0}-${resumen ? 1 : 0}`} />
+                )}
+                {panelIzq === "transcripcion" && <PanelTranscripcion videoId={c.video_id} onSaltar={saltar} tiempoActual={esArchivo ? tiempoActual : null} />}
+              </Pestanas>
             </Tarjeta>
           )}
         </div>
@@ -207,6 +267,16 @@ export default function VisorCuestionario({
         {/* Columna del cuestionario */}
         <section aria-label="Cuestionario" className="flex min-w-0 flex-col gap-4">
           <TituloSeccion>Cuestionario</TituloSeccion>
+
+          {c.es_creador && intento === null && onRecargar && (
+            <PanelCalidad
+              cuestionarioId={c.id}
+              preguntas={c.preguntas}
+              tieneGrupo={!!c.grupo_id}
+              onSaltar={saltar}
+              onRecargar={onRecargar}
+            />
+          )}
 
           {intento === null ? (
             <Tarjeta className="flex flex-col gap-4">
@@ -279,7 +349,9 @@ export default function VisorCuestionario({
                     <p className="text-2xl font-extrabold">
                       Puntaje: {resumen.puntaje} de {resumen.total} ({resumen.porcentaje}%)
                     </p>
-                    {c.preguntas.length > resumen.total && <p className="text-sm text-suave">(sin contar las preguntas abiertas)</p>}
+                    {c.preguntas.length > resumen.total && (
+                      <p className="text-sm text-suave">(las preguntas abiertas cuentan cuando tu docente aprueba su nota)</p>
+                    )}
                     <p className="mt-1 font-semibold text-enlace">{mensajePuntaje(resumen.porcentaje)}</p>
                     {resumen.tipo === "diferido" && <p className="mt-1 text-sm">Repaso diferido completado. ¡Gracias!</p>}
                     {resumen.repaso_disponible_desde && (

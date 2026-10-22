@@ -13,6 +13,7 @@ from app.modelos import Tarea
 from app.routers import (
     admin,
     auth,
+    banco,
     comparar,
     coordinacion,
     cuestionarios,
@@ -24,6 +25,8 @@ from app.routers import (
     procesar,
     notificaciones,
     sus,
+    tutor,
+    videos,
     vivo,
 )
 from app.services import vivo as servicio_vivo
@@ -76,6 +79,9 @@ app.include_router(cursos.router)
 app.include_router(coordinacion.router)
 app.include_router(vivo.router)
 app.include_router(notificaciones.router)
+app.include_router(tutor.router)
+app.include_router(banco.router)
+app.include_router(videos.router)
 
 
 @app.get("/api/salud")

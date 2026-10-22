@@ -9,9 +9,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.modelos import Cuestionario, Grupo, Intento, Pregunta, Usuario, ahora, generar_codigo
+from app.modelos import Cuestionario, Grupo, Intento, Pregunta, Usuario, Video, ahora, generar_codigo
+from app.routers.cuestionarios import verificacion_de
+from app.schemas import Transcripcion
 from app.schemas_api import (
+    CalificacionIAOut,
     CompartidoOut,
+    DistractorOut,
+    IntentoResumen,
+    ItemAnalisisOut,
     CuestionarioEditarIn,
     DuplicarIn,
     EstudianteGanancia,
@@ -29,7 +35,11 @@ from app.schemas_api import (
     TiempoEdicionIn,
 )
 from app.seguridad import requiere_docente, usuario_actual
+from app.schemas_s8 import NotaAbiertaIn
+from app.services import psicometria
+from app.services.calificacion import calcular_puntaje
 from app.services.estadistica import datos_por_estudiante
+from app.services.verificacion import verificar_preguntas
 from app.services.notificaciones import notificar_publicacion
 
 router = APIRouter(prefix="/api", tags=["docente"])
@@ -64,6 +74,8 @@ def _a_salida(p: Pregunta) -> PreguntaOut:
         explicacion=p.explicacion,
         ra_id=p.ra_id,
         nivel_bloom=p.nivel_bloom,
+        verificacion=verificacion_de(p),
+        banco_id=p.banco_id,
     )
 
 
@@ -91,9 +103,15 @@ def _validar_ra(c: Cuestionario, ra_id: int | None) -> None:
 
 
 def _aplicar(p: Pregunta, datos: PreguntaIn) -> None:
+    opciones_json = json.dumps(datos.opciones, ensure_ascii=False)
+    # Si cambia el contenido evaluable, la verificación de calidad anterior deja de valer
+    if (p.tipo, p.enunciado, p.opciones_json, p.respuesta_correcta) != (
+        datos.tipo, datos.enunciado, opciones_json, datos.respuesta_correcta
+    ):
+        p.verificacion = None
     p.tipo = datos.tipo
     p.enunciado = datos.enunciado
-    p.opciones_json = json.dumps(datos.opciones, ensure_ascii=False)
+    p.opciones_json = opciones_json
     p.respuesta_correcta = datos.respuesta_correcta
     p.explicacion = datos.explicacion
     p.marca_tiempo = datos.marca_tiempo
@@ -403,6 +421,7 @@ def _calcular_resultados(db: Session, c: Cuestionario) -> ResultadosOut:
 
     intentos: list[IntentoResultado] = []
     por_pregunta: dict[int, list[tuple[str, dict]]] = {}
+    resp_con_intento: dict[int, list[tuple[str, dict, int]]] = {}
     for i, u in filas:
         intentos.append(
             IntentoResultado(
@@ -419,6 +438,7 @@ def _calcular_resultados(db: Session, c: Cuestionario) -> ResultadosOut:
         )
         for r in json.loads(i.respuestas_json):
             por_pregunta.setdefault(r["pregunta_id"], []).append((u.nombre, r))
+            resp_con_intento.setdefault(r["pregunta_id"], []).append((u.nombre, r, i.id))
 
     preguntas: list[PreguntaResultado] = []
     ra_codigos = {r.id: r.codigo for r in c.grupo.asignatura.resultados} if c.grupo_id and c.grupo else {}
@@ -432,7 +452,16 @@ def _calcular_resultados(db: Session, c: Cuestionario) -> ResultadosOut:
                     tipo=p.tipo,
                     enunciado=p.enunciado,
                     num_respuestas=len(resp),
-                    respuestas_abiertas=[RespuestaAbiertaOut(nombre=n, respuesta=r["respuesta"]) for n, r in resp],
+                    respuestas_abiertas=[
+                        RespuestaAbiertaOut(
+                            intento_id=iid,
+                            nombre=n,
+                            respuesta=r["respuesta"],
+                            sugerida=CalificacionIAOut(**r["ia"]) if r.get("ia") else None,
+                            nota_final=r.get("nota_final"),
+                        )
+                        for n, r, iid in resp_con_intento.get(p.id, [])
+                    ],
                 )
             )
         else:
@@ -451,6 +480,7 @@ def _calcular_resultados(db: Session, c: Cuestionario) -> ResultadosOut:
             )
 
     promedio = round(sum(x.porcentaje for x in intentos) / len(intentos), 1) if intentos else 0.0
+    items, n_items = _analisis_items(c, filas)
     return ResultadosOut(
         titulo=c.titulo,
         modo=c.modo or "aprendizaje",
@@ -462,7 +492,79 @@ def _calcular_resultados(db: Session, c: Cuestionario) -> ResultadosOut:
         # El intento diferido se analiza aparte (retención): no cuenta como "último intento"
         ganancia=_calcular_ganancia([(i, u) for i, u in filas if i.tipo != "diferido"]),
         retencion=_calcular_retencion(db, c),
+        items=items,
+        items_minimo=psicometria.MINIMO_RESPUESTAS,
+        items_intentos=n_items,
     )
+
+
+def _analisis_items(c: Cuestionario, filas: list[tuple[Intento, Usuario]]) -> tuple[list[ItemAnalisisOut], int]:
+    """Psicometría clásica sobre los intentos iniciales finalizados (un intento por estudiante)."""
+    cerradas = [p for p in c.preguntas if p.tipo != "abierta"]
+    ids = {p.id for p in cerradas}
+    iniciales = [(i, u) for i, u in filas if (i.tipo or "inicial") == "inicial"]
+    respuestas: list[dict[int, str]] = []
+    for i, _u in sorted(iniciales, key=lambda f: (f[0].creado_en, f[0].id)):
+        respuestas.append({r["pregunta_id"]: r["respuesta"] for r in json.loads(i.respuestas_json) if r["pregunta_id"] in ids})
+    entradas = [
+        psicometria.ItemEntrada(id=p.id, orden=p.orden, enunciado=p.enunciado,
+                                opciones=json.loads(p.opciones_json), correcta=p.respuesta_correcta)
+        for p in cerradas
+    ]
+    analisis = psicometria.analizar_items(entradas, respuestas)
+    return [
+        ItemAnalisisOut(**{**vars(a), "distractores": [DistractorOut(**vars(x)) for x in a.distractores]})
+        for a in analisis
+    ], len(respuestas)
+
+
+@router.put("/intentos/{intento_id}/abiertas/{pregunta_id}/nota", response_model=IntentoResumen)
+def calificar_abierta(
+    intento_id: int,
+    pregunta_id: int,
+    datos: NotaAbiertaIn,
+    docente: Usuario = Depends(requiere_docente),
+    db: Session = Depends(get_db),
+):
+    """El docente aprueba (nota = la sugerida) o ajusta la nota final de una pregunta abierta; se recalcula el puntaje."""
+    intento = db.get(Intento, intento_id)
+    if intento is None:
+        raise HTTPException(status_code=404, detail="Intento no encontrado.")
+    c = _propio(db, intento.cuestionario_id, docente)
+    pregunta = next((p for p in c.preguntas if p.id == pregunta_id and p.tipo == "abierta"), None)
+    if pregunta is None:
+        raise HTTPException(status_code=404, detail="Esa pregunta abierta no pertenece al cuestionario.")
+    respuestas = json.loads(intento.respuestas_json)
+    r = next((x for x in respuestas if x["pregunta_id"] == pregunta_id), None)
+    if r is None:
+        raise HTTPException(status_code=404, detail="El estudiante no respondió esa pregunta.")
+    r["nota_final"] = datos.nota
+    r["calificada_por"] = docente.id
+    intento.respuestas_json = json.dumps(respuestas, ensure_ascii=False)
+    if intento.finalizado:
+        intento.puntaje, intento.total = calcular_puntaje(respuestas, c.preguntas)
+    db.commit()
+    return IntentoResumen(
+        id=intento.id, cuestionario_id=c.id, puntaje=intento.puntaje, total=intento.total,
+        porcentaje=round(100 * intento.puntaje / intento.total, 1) if intento.total else 0.0,
+        finalizado=intento.finalizado, creado_en=intento.creado_en, tipo=intento.tipo or "inicial",
+    )
+
+
+@router.post("/cuestionarios/{cuestionario_id}/verificar")
+def verificar_calidad(
+    cuestionario_id: int,
+    docente: Usuario = Depends(requiere_docente),
+    db: Session = Depends(get_db),
+):
+    """(Re)verifica con IA todas las preguntas del cuestionario. 503 si la IA no está disponible."""
+    c = _propio(db, cuestionario_id, docente)
+    video = db.get(Video, c.video_id)
+    ok = verificar_preguntas(Transcripcion.model_validate_json(video.transcripcion_json), list(c.preguntas))
+    if not ok:
+        raise HTTPException(status_code=503, detail="No se pudo verificar ahora (la IA no está disponible). Inténtalo más tarde.")
+    db.commit()
+    return {"verificadas": sum(1 for p in c.preguntas if p.verificacion), "total": len(c.preguntas)}
 
 
 @router.get("/cuestionarios/{cuestionario_id}/resultados", response_model=ResultadosOut)

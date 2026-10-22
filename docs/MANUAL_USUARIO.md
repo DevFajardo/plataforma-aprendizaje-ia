@@ -38,8 +38,22 @@ Al terminar se abre el cuestionario con el **resumen**, las **ideas clave** y la
 
 1. Abre el cuestionario desde **Mis cuestionarios**.
 2. Responde una pregunta a la vez. Tras cada respuesta verás si fue correcta, la **explicación** y la **marca de tiempo** del video donde se trata el tema (el botón «Ver en el video» te lleva a ese momento).
-3. Las preguntas **abiertas** no se califican automáticamente: se muestra una respuesta modelo para que te autoevalúes.
+3. En las preguntas **abiertas** se muestra la respuesta modelo y una **calificación sugerida por la IA** (de 0 a 100, con un nivel —insuficiente, básico, bueno o excelente—, una retroalimentación breve y lo que faltó). Es solo una sugerencia: cuenta en tu puntaje cuando tu docente la aprueba o la ajusta. Si la IA no está disponible, la pregunta se registra igual y solo ves la respuesta modelo.
 4. Al final verás tu puntaje. Puedes repetir el cuestionario cuantas veces quieras.
+
+### Pregúntale al video (tutor con IA)
+Junto al video, la pestaña **Pregúntale al video** abre un chat con un tutor que responde **solo con lo que dice el video** y te muestra de dónde lo sacó:
+
+- Escribe tu pregunta o pulsa una de las **tres preguntas sugeridas**.
+- Cada respuesta puede traer **citas** con forma de botón (`▶ 04:32`): al pulsarlas el video salta a ese minuto (YouTube, Vimeo o archivo).
+- Si el tema no está en el video, el tutor te lo dice con claridad.
+- **Si tienes un intento en curso**, el tutor no te da la respuesta de las preguntas que aún no contestas: te orienta con pistas y te dice en qué parte del video mirar.
+- **Nueva conversación** borra el hilo de la pantalla y empieza otro (la anterior queda guardada). Puedes enviar hasta **30 mensajes cada 24 horas**; el contador aparece bajo el cuadro de texto.
+- El tutor **no está disponible** en los cuestionarios de grupo control ni durante el repaso diferido (ni mientras tengas uno vencido pendiente), para no alterar la medición.
+
+### Subtítulos y transcripción
+- En los videos y audios **subidos como archivo** los subtítulos en español se activan desde el reproductor (botón CC).
+- La pestaña **Transcripción** (YouTube, Vimeo y archivos) lista cada fragmento con su minuto: pulsa uno para saltar al video. En los archivos se resalta el fragmento que se está diciendo. El buscador filtra y resalta palabras, y los botones **Transcripción (.txt)** y **Subtítulos (.vtt)** descargan el texto.
 
 ### Repasos diferidos
 Si el docente activó un **repaso diferido**, al terminar tu primer intento verás la fecha en que podrás repasar (1, 3, 7 o 14 días después). Esa fecha y los repasos pendientes aparecen en tu **Panel**, en la tarjeta **Repasos pendientes**.
@@ -100,8 +114,24 @@ Si aún no tienes intentos, el panel te invita a generar tu primer cuestionario.
 ### Editar
 Pulsa **Editar** para cambiar el título, el resumen y las ideas clave, y para modificar, agregar, eliminar o reordenar preguntas. La aplicación valida los datos (por ejemplo, la respuesta correcta debe ser una de las opciones y las opciones no pueden repetirse).
 
+### Calidad de las preguntas (verificación con IA)
+Al generar un cuestionario, la IA revisa cada pregunta en una sola pasada y la marca con un sello:
+
+- **✓ Verificada en el video**: la pregunta y su respuesta están respaldadas por la transcripción, la respuesta correcta es inequívoca y no hay problemas de redacción.
+- **⚠ Revisar**: respaldo parcial o nulo, otra opción también podría ser correcta, o hay un problema de redacción. **Ver detalle de la verificación** muestra la cita del video (con botón para saltar a ese minuto), si la respuesta es inequívoca y los problemas encontrados.
+- **Sin verificar**: la IA no estuvo disponible. El cuestionario funciona igual; pulsa **Verificar ahora** en el panel «Calidad de las preguntas» (visor) para repetirlo.
+
+El sello aparece en el **editor** y en el panel «Calidad de las preguntas» del visor, con la casilla **Ver solo las que requieren revisión**. Los estudiantes no ven los sellos. Si cambias el enunciado, las opciones o la respuesta de una pregunta, su verificación se descarta (queda «Sin verificar») porque ya no corresponde al contenido.
+
+### Banco de preguntas
+En el editor y en el visor, **Guardar en el banco** copia una pregunta (con su RA, nivel de Bloom, asignatura y etiquetas) a un banco compartido. Elige si es **institucional** (la ven todos los docentes y coordinadores) o **privada** (solo tú). En **Banco** (menú superior; docentes y coordinadores) puedes buscar por texto y filtrar por asignatura, RA, nivel de Bloom, tipo y verificación; ver cuántas veces se usó y su porcentaje de acierto acumulado; y, si eres docente, **agregarla a uno de tus cuestionarios** (se añade al final, como copia; la marca de tiempo se borra porque era de otro video). Solo el autor puede cambiar su visibilidad o quitarla del banco.
+
 ### Ver resultados
 En **Resultados** ves intentos, estudiantes, promedio, el porcentaje de acierto por pregunta, los **temas a reforzar** y las respuestas a las preguntas abiertas.
+
+**Preguntas abiertas con IA**: cada respuesta abierta muestra la nota sugerida (0–100), su nivel, la retroalimentación y lo que faltó. Pulsa **Aprobar sugerida** o escribe otra nota y **Guardar nota** para fijar la nota final. Una abierta **aprobada** suma `nota ÷ 100` puntos al puntaje del intento y 1 al total (p. ej., 2 aciertos de 2 cerradas + una abierta aprobada con 80 → puntaje 3 de 3, redondeado). Las abiertas sin aprobar no cuentan, como antes.
+
+**Análisis de ítems**: con los intentos **iniciales** finalizados, cada pregunta cerrada muestra su **dificultad (p)**, su **discriminación (D)** —diferencia de aciertos entre el 27 % de estudiantes con mayor y menor puntaje—, la **correlación punto-biserial (r pb)** y el porcentaje que eligió cada opción. La aplicación lo interpreta en lenguaje sencillo («Muy fácil», «Discrimina bien», «Revisar: la opción C confunde a los mejores estudiantes») y marca los **distractores no funcionales** (los elige menos del 5 %). Con menos de 5 respuestas por pregunta dice «Datos insuficientes». El análisis también está en el PDF.
 
 **Ganancia de aprendizaje**: para los estudiantes con 2 o más intentos se compara el promedio de su **primer intento** (pre-test) con el de su **último intento** (post-test) y se muestra la diferencia en puntos porcentuales.
 
@@ -196,6 +226,8 @@ Estos derechos (conocer, actualizar, rectificar, suprimir y revocar) están desc
 **¿Cuánto cuesta?** Nada: usa planes gratuitos de las herramientas de IA.
 
 **¿Los cuestionarios son privados?** Sí. Solo los ve su creador hasta que un docente lo publica y comparte el código.
+
+**¿Puedo fiarme de lo que dice el tutor?** El tutor responde solo con la transcripción y cita el minuto para que lo compruebes; si no encuentra la respuesta en el video, lo dice. Aun así es una IA: verifica las citas.
 
 **¿Quién califica?** El servidor. Las respuestas correctas no se envían al navegador del estudiante hasta que responde.
 

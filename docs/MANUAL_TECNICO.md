@@ -8,7 +8,7 @@ flowchart TB
         N[Next.js 16 · App Router · Tailwind]
     end
     subgraph Servidor["Backend FastAPI"]
-        R[Routers: auth, procesar, cuestionarios,<br/>intentos, docente, comparar,<br/>medios, estadisticas, sus,<br/>admin, cursos, coordinacion,<br/>vivo (HTTP + WebSocket), notificaciones]
+        R[Routers: auth, procesar, cuestionarios,<br/>intentos, docente, comparar,<br/>medios, estadisticas, sus,<br/>admin, cursos, coordinacion,<br/>vivo (HTTP + WebSocket), notificaciones,<br/>tutor, banco, videos (Sprint 8)]
         S[Seguridad: bcrypt + JWT]
         T[services/transcripcion]
         I[services/ia: generar_con_respaldo]
@@ -47,6 +47,8 @@ flowchart TB
 5. Si todos fallan, lanza `RuntimeError` con el resumen de fallos, que se muestra al usuario.
 
 Añadir un proveedor nuevo = crear una clase que implemente `ProveedorIA` y registrarla en `PROVEEDORES`.
+
+**Tareas genéricas (Sprint 8).** Además de `generar()`, cada proveedor implementa `completar_json(prompt, esquema_pydantic)` (Gemini con `response_schema`, Groq con modo JSON + el JSON Schema en el prompt y Ollama con `format`). `ejecutar_con_respaldo(prompt, esquema)` reutiliza exactamente la misma lógica de orden de proveedores, reintentos transitorios y respaldo que `generar_con_respaldo` (ambas comparten `_recorrer_proveedores` y `_con_reintentos`) y devuelve `(objeto validado, proveedor)`. Lo usan el tutor, la calificación de abiertas y la verificación de calidad; los servicios lo invocan como `ia.ejecutar_con_respaldo` (atributo del módulo) para poder simularlo en las pruebas.
 
 El prompt exige responder **siempre en español**, aunque la transcripción esté en otro idioma. Whisper detecta el idioma automáticamente salvo que `IDIOMA_TRANSCRIPCION` esté definido.
 
@@ -206,7 +208,7 @@ erDiagram
     }
 ```
 
-Tablas: `usuarios`, `videos`, `cuestionarios`, `preguntas`, `tareas`, `intentos`, `repasos`, `respuestas_sus` y, desde el Sprint 6, `facultades`, `programas`, `asignaturas`, `resultados_aprendizaje`, `asignatura_ra`, `grupos`, `matriculas` y `alertas_seguimiento`; y, desde el Sprint 7, `sesiones_vivo`, `participantes_vivo`, `respuestas_vivo` y `notificaciones` (ver «Clase en vivo»). Las crea `create_all`; este sprint no añade columnas a tablas existentes.
+Tablas: `usuarios`, `videos`, `cuestionarios`, `preguntas`, `tareas`, `intentos`, `repasos`, `respuestas_sus` y, desde el Sprint 8, `conversaciones_tutor`, `mensajes_tutor` y `banco_preguntas` (ver «Sprint 8»); y, desde el Sprint 6, `facultades`, `programas`, `asignaturas`, `resultados_aprendizaje`, `asignatura_ra`, `grupos`, `matriculas` y `alertas_seguimiento`; y, desde el Sprint 7, `sesiones_vivo`, `participantes_vivo`, `respuestas_vivo` y `notificaciones` (ver «Clase en vivo»). Las crea `create_all`; este sprint no añade columnas a tablas existentes.
 
 ### Estructura académica (Sprint 6)
 
@@ -260,7 +262,7 @@ Todos los endpoints (salvo los marcados «público») exigen la cabecera `Author
 | DELETE | `/api/cuestionarios/{id}` | creador | Elimina el cuestionario, sus intentos y, si procede, el archivo subido. |
 | POST | `/api/cuestionarios/{id}/intentos` | creador o publicado | Inicia un intento y devuelve `tipo` (`inicial`, `practica` o `diferido`) y `con_feedback`. Es `diferido` si el usuario tiene un repaso vencido sin completar. |
 | POST | `/api/intentos/{id}/responder` | dueño del intento | Califica una respuesta en el servidor y devuelve retroalimentación. En intentos diferidos y en el modo control devuelve solo `registrada` (`con_feedback: false`). 409 si ya se respondió o el intento terminó. |
-| POST | `/api/intentos/{id}/finalizar` | dueño del intento | Calcula el puntaje final (excluye preguntas abiertas), fija el `tipo` definitivo, crea el repaso tras el intento inicial o lo marca como completado. En un diferido (modo aprendizaje) incluye `revision` con las respuestas correctas. |
+| POST | `/api/intentos/{id}/finalizar` | dueño del intento | Calcula el puntaje final (las abiertas solo cuentan si el docente aprobó su nota; ver «Sprint 8»), fija el `tipo` definitivo, crea el repaso tras el intento inicial o lo marca como completado. En un diferido (modo aprendizaje) incluye `revision` con las respuestas correctas. |
 | GET | `/api/intentos` | autenticado | Historial de intentos finalizados del usuario. |
 | GET | `/api/repasos` | autenticado | Repasos pendientes del usuario: vencidos (`vencido: true`) y próximos con su fecha. |
 | POST | `/api/cuestionarios/{id}/publicar` | docente creador | Publica o despublica; admite `estimacion_manual_min` opcional. Fija `publicado_en` la primera vez. |
@@ -414,6 +416,87 @@ erDiagram
 
 Modelo `Notificacion` (usuario, tipo, título, mensaje, enlace, leída, creada_en y `clave`, única por usuario, que evita duplicados). Se generan: **cuestionario publicado** en un grupo (a los matriculados, una vez por cuestionario); **repaso disponible** y **alerta temprana** (al consultar las notificaciones: el repaso cuando vence sin completarse; las alertas se calculan como máximo cada 2 min por docente con las reglas del Sprint 6); y **resultado de clase en vivo** (participantes con cuenta). Endpoints: `GET /api/notificaciones?pagina&por_pagina&solo_no_leidas`, `GET /api/notificaciones/no-leidas`, `POST /api/notificaciones/{id}/leer` y `POST /api/notificaciones/leer-todas`. Cada usuario solo accede a las suyas (404 si no lo son). El frontend sondea el contador cada 60 s (`CampanaNotificaciones.tsx`, sin WebSocket); el panel ocupa toda la pantalla en móvil y existe la página `/notificaciones`. Al eliminar la cuenta se borran sus notificaciones y sus participaciones en clases en vivo quedan anónimas.
 
+## 5b. Sprint 8: tutor IA, calificación de abiertas, calidad, psicometría, banco y subtítulos
+
+```mermaid
+erDiagram
+    USUARIOS ||--o{ CONVERSACIONES_TUTOR : "conversa"
+    CUESTIONARIOS ||--o{ CONVERSACIONES_TUTOR : "sobre"
+    CONVERSACIONES_TUTOR ||--o{ MENSAJES_TUTOR : "contiene"
+    USUARIOS ||--o{ BANCO_PREGUNTAS : "autor_id"
+    CONVERSACIONES_TUTOR { int id PK  int usuario_id FK  int cuestionario_id FK  datetime creada_en }
+    MENSAJES_TUTOR { int id PK  int conversacion_id FK  string rol "usuario|tutor"  text texto  text citas_json "marca_tiempo, fragmento"  datetime creado_en }
+    BANCO_PREGUNTAS { int id PK  int autor_id FK  string visibilidad "institucional|privada"  string tipo  text enunciado  text opciones_json  text respuesta_correcta  text explicacion  string nivel_bloom  string ra_codigo  text ra_descripcion  string asignatura_nombre  text etiquetas_json  text verificacion }
+```
+
+Columnas nuevas (migradas por `_migrar_columnas`): `preguntas.verificacion` (JSON, nulo = sin verificar) y `preguntas.banco_id` (entero sin clave foránea: id de la pregunta del banco de la que proviene o a la que dio origen).
+
+### Tutor IA («Pregúntale al video»)
+
+`services/tutor.py` + `routers/tutor.py`. **Sin vectores**: el prompt lleva la transcripción completa con marcas `[mm:ss]`; si supera 300 000 caracteres (`MAX_CONTEXTO`) se seleccionan los segmentos con más coincidencias de palabras clave (sin acentos ni palabras vacías) con la pregunta, más un segmento vecino a cada lado, en orden cronológico. Se añade el historial de los **últimos 6 mensajes** de la conversación activa.
+
+- **Respuesta estructurada** (`RespuestaTutor`): `texto` y `citas[{marca_tiempo, fragmento}]`. `validar_citas` descarta las citas con marca que no sea `mm:ss`, que supere la duración del video (+60 s), sin fragmento o repetidas; normaliza la marca y conserva como máximo 4.
+- **Reglas del prompt**: responder solo con la transcripción; si no está, decirlo («Eso no se explica en este video»); la pregunta del estudiante es dato, no instrucciones. **Intento en curso**: se pasan al modelo solo los **enunciados** de las preguntas aún sin responder (nunca opciones, respuesta correcta ni explicación) con la orden de guiar sin revelar.
+- **Disponibilidad**: `GET /api/cuestionarios/{id}/tutor` devuelve `habilitado`/`motivo`. Se bloquea (403 al preguntar) en modo `control`, con un intento `diferido` en curso o con un repaso vencido sin completar (el siguiente intento sería diferido). El cuestionario debe ser visible para el usuario (creador o publicado).
+- **Límite**: `LIMITE_TUTOR_DIARIO` (30) mensajes del usuario en 24 h móviles, sumando todas sus conversaciones; 429 al superarlo. Un fallo de la IA responde 503 y no guarda ni cuenta el mensaje.
+- **Persistencia**: `ConversacionTutor`/`MensajeTutor` por usuario y cuestionario; la conversación activa es la más reciente y «Nueva conversación» crea otra (las anteriores quedan guardadas). Se borran con el cuestionario y con la cuenta.
+- **Sugerencias**: tres preguntas generadas de las ideas clave, sin IA (`sugerencias_iniciales`).
+
+### Calificación de preguntas abiertas con IA
+
+`services/calificacion.py`. Al responder una abierta, `calificar_abierta` envía enunciado, respuesta modelo, explicación y la respuesta del estudiante (entre marcadores, tratada como dato) con una rúbrica fija y guarda en la respuesta (`Intento.respuestas_json`) el campo `ia = {puntaje 0–100, nivel, retroalimentacion, falto, proveedor}`. El **nivel se deriva del puntaje** (insuficiente 0–39, básico 40–64, bueno 65–84, excelente 85–100), de modo que siempre es coherente. Una respuesta vacía vale 0 sin llamar a la IA. Si la IA falla no se bloquea la respuesta (no hay sugerencia). El estudiante recibe `calificacion_ia` solo con retroalimentación (no en control ni en diferido); el docente siempre ve la sugerida.
+
+El docente fija la nota final con `PUT /api/intentos/{intento}/abiertas/{pregunta}/nota` `{nota 0–100}`; se guarda `nota_final` en la respuesta y, si el intento ya está finalizado, se recalcula. **Fórmula del puntaje** (`calcular_puntaje`):
+
+```
+puntaje = round(aciertos_cerradas + Σ nota_final_i / 100)
+total   = preguntas_cerradas + número de abiertas con nota_final
+```
+
+Sin abiertas aprobadas es idéntico al cálculo anterior (aciertos / cerradas), por lo que no cambian los cálculos de ganancia, retención ni comparación. El logro por RA/Bloom sigue usando solo las cerradas.
+
+### Verificación de calidad de las preguntas
+
+`services/verificacion.py`. Tras guardar el cuestionario generado se hace **una llamada en lote** (`LoteVerificacion`) con la transcripción y todas las preguntas. Para cada una se guarda en `Pregunta.verificacion` `{estado, respaldo (si|parcial|no), cita, marca_tiempo, inequivoca, problemas[], proveedor}`; `estado = verificada` solo si `respaldo == si`, la respuesta es inequívoca y no hay problemas; si no, `revisar`. **Si la IA falla, el cuestionario queda `listo` con las preguntas «sin verificar»** (`verificacion = NULL`); `POST /api/cuestionarios/{id}/verificar` la repite (503 si sigue caída). Editar el enunciado, las opciones, el tipo o la respuesta correcta de una pregunta descarta su verificación; editar otros campos no. El creador la recibe en `PreguntaOut.verificacion`; los estudiantes, nunca.
+
+### Análisis de ítems (psicometría clásica)
+
+`services/psicometria.py` (puro, sin BD; `routers/docente._analisis_items` lo alimenta con los intentos **iniciales finalizados**, uno por estudiante, y solo preguntas cerradas). Con *N* estudiantes y puntaje total *T* (cerradas acertadas):
+
+| Índice | Definición |
+|---|---|
+| Dificultad `p` | aciertos ÷ respuestas del ítem. ≥ 0,85 «Muy fácil»; ≥ 0,70 «Fácil»; ≥ 0,30 «Dificultad adecuada»; ≥ 0,15 «Difícil»; menor «Muy difícil». |
+| Discriminación `D` | `p(27 % superior) − p(27 % inferior)`, con *k* = máx(1, redondeo(0,27 · N)) estudiantes por grupo, ordenados por *T* (estable en empates). ≥ 0,40 «Discrimina muy bien»; ≥ 0,30 «bien»; ≥ 0,20 «aceptable»; ≥ 0 «poco»; negativa «Discriminación negativa» (revisar). |
+| Punto-biserial `r_pb` | `(M1 − M0) / s · √(p·q)`, con M1/M0 las medias de *T* de quienes acertaron/fallaron, *s* la desviación poblacional de *T* y *T* incluye el ítem. `null` si no hay varianza. |
+| Distractores | % que elige cada opción; **no funcional** si lo elige < 5 %; **confunde a los mejores** si lo elige un % mayor del grupo superior que del inferior. |
+
+Mínimo de **5 respuestas** por pregunta (`MINIMO_RESPUESTAS`); con menos, `suficiente = false` («datos insuficientes»). `ResultadosOut` añade `items`, `items_minimo` e `items_intentos`; el PDF de resultados incluye la tabla «Análisis de ítems».
+
+### Banco de preguntas institucional
+
+`routers/banco.py`, modelo `PreguntaBanco`. `POST /api/preguntas/{id}/banco` (docente creador) copia la pregunta con RA (código y descripción), Bloom, asignatura (la del grupo del cuestionario o la indicada), etiquetas (máx. 10 de 30 caracteres), verificación y autor, y fija `Pregunta.banco_id` (409 si ya está). **Visibilidad**: `institucional` (docentes, coordinadores y admin) o `privada` (solo el autor; para los demás es un 404). Búsqueda `GET /api/banco` por texto (cada palabra debe aparecer en enunciado, opciones, etiquetas o respuesta) y filtros `asignatura`, `ra`, `bloom`, `tipo`, `verificacion` (`verificada|revisar|sin_verificar`), `solo_mias`, paginada; las **estadísticas acumuladas** (usos, respuestas y % de acierto de las copias en cuestionarios, intentos finalizados) se calculan al consultar. `POST /api/banco/{id}/agregar` copia la pregunta al final de un cuestionario propio (sin marca de tiempo y con la verificación vacía, porque pertenece a otro video; asigna el RA si la asignatura del grupo tiene uno con el mismo código). Solo el autor edita (`PATCH`: visibilidad, etiquetas) o elimina; al eliminar, las copias conservan su contenido.
+
+### Subtítulos y transcripción
+
+`services/subtitulos.py`, `routers/videos.py`. `GET /api/videos/{id}/subtitulos.vtt` genera WebVTT desde los segmentos (cabecera `WEBVTT`, tiempos `HH:MM:SS.mmm`; el fin de cada cue es el inicio del siguiente, con máximo 8 s, y 4 s el último; se escapan `&`, `<` y `>`). `transcripcion.txt` (descarga con marcas `[mm:ss]`) y `transcripcion` (JSON para el panel) usan el mismo control de acceso: el usuario debe ser creador de un cuestionario con ese video o ver uno publicado (404 en otro caso). Como `<track>` no puede enviar el JWT, el frontend descarga el VTT con `fetch` y lo sirve como URL de objeto (`blob:`). En el visor de archivos se usa `<track kind="captions" srclang="es" default>`; en YouTube/Vimeo el panel «Transcripción» (lista clicable + buscador) usa el mismo salto de reproductor que las marcas de tiempo, y con HTML5 resalta el segmento actual según `timeupdate`.
+
+### Endpoints del Sprint 8
+
+| Método | Ruta | Permisos | Descripción |
+|---|---|---|---|
+| GET | `/api/cuestionarios/{id}/tutor` | creador o publicado | Estado del tutor: disponibilidad y motivo, mensajes de la conversación activa, mensajes restantes y 3 sugerencias. |
+| POST | `/api/cuestionarios/{id}/tutor` | ídem | `{pregunta}` (1–1000): respuesta con citas. 403 bloqueado, 429 límite, 503 IA caída. |
+| POST | `/api/cuestionarios/{id}/tutor/nueva` | ídem | Nueva conversación. |
+| PUT | `/api/intentos/{intento}/abiertas/{pregunta}/nota` | docente creador | Aprueba o ajusta la nota final (0–100) de una abierta; devuelve el resumen del intento recalculado. |
+| POST | `/api/cuestionarios/{id}/verificar` | docente creador | (Re)verifica la calidad de todas las preguntas. |
+| POST | `/api/preguntas/{id}/banco` | docente creador | Guarda la pregunta en el banco (`visibilidad`, `etiquetas`, `asignatura_nombre`). |
+| GET | `/api/banco` · `/api/banco/filtros` | docente, coordinador, admin | Búsqueda paginada y valores para los filtros. |
+| PATCH/DELETE | `/api/banco/{id}` | autor | Cambia visibilidad/etiquetas o elimina. |
+| POST | `/api/banco/{id}/agregar` | docente | `{cuestionario_id}`: copia la pregunta a un cuestionario propio. |
+| GET | `/api/videos/{id}/subtitulos.vtt` · `transcripcion.txt` · `transcripcion` | creador o publicado | WebVTT, descarga de texto y JSON de segmentos. |
+
+`GET /api/cuestionarios/{id}` añade `video_id` y, para el creador, `verificacion` y `banco_id` por pregunta. `POST /api/intentos/{id}/responder` añade `calificacion_ia` (solo preguntas abiertas con retroalimentación; si no hay, la clave se omite). `GET .../resultados` añade `items`, `sugerida`, `nota_final` e `intento_id` en las respuestas abiertas.
+
 ## 6. Seguridad
 
 - **Contraseñas**: bcrypt con sal por contraseña (se limita a 72 bytes, el máximo de bcrypt).
@@ -451,6 +534,7 @@ cd backend
 - `tests/test_sprint5.py`: `identificar_video` (YouTube/Vimeo/inválidos), rechazo de transmisiones en vivo y de videos largos (con `yt_dlp` simulado), repaso diferido con fechas simuladas (se manipula `disponible_desde`), intento diferido sin retroalimentación, retención, modo control, duplicar, comparación (valores conocidos de media, desviación y d de Cohen), tiempo de edición y ahorro, consentimiento, mis datos, eliminación de cuenta, CSV de investigación y migración de una BD anterior.
 - `tests/test_sprint6.py`: roles y permisos (403 por rol), CRUD de la estructura académica, grupos y matrícula con código, visibilidad de cuestionarios por curso, RA y Bloom por pregunta, esquema de la IA con `nivel_bloom`, logro por RA con datos conocidos y semáforo, alcance del coordinador/admin, filtro por periodo, cada regla de alerta (y «atendida»), PDFs (`%PDF`) y migración de columnas.
 - `tests/test_sprint7.py` (46 pruebas): puntaje por tiempo, filtro de apodos, crear/unirse a una sesión (apodo duplicado, ofensivo, límite de participantes, vínculo con la cuenta), que no se filtre la respuesta correcta antes del cierre, flujo completo por `TestClient.websocket_connect` (presentador + 2 participantes: lobby → pregunta → respuestas → cierre → siguiente → abierta → podio), temporizador del servidor, reconexión con token y reconstrucción tras reinicio, permisos del WebSocket (4401/4403/4404) y de los controles, expiración a las 2 h, historial, CSV (BOM y fórmulas) y notificaciones (generación, lectura, paginación, privacidad). Las pruebas de WebSocket usan `with TestClient(app)` con el `lifespan` anulado para tener un único bucle de eventos.
+- `tests/test_sprint8.py` (69 pruebas): psicometría con datos conocidos (p, D con grupos del 27 %, punto-biserial, distractor no funcional y que confunde a los mejores, datos insuficientes), fórmula del puntaje con abiertas aprobadas, calificación de abiertas (sugerida, nivel coherente, vacía sin IA, IA caída, oculta en control, aprobación/ajuste y permisos), verificación (guardado, IA caída no bloquea, invalidación al editar, reverificar), tutor (contexto con marcas y selección por palabras clave, citas válidas, prompt sin respuestas de preguntas pendientes, bloqueo en control/diferido, límite diario por usuario, historial de 6 mensajes, nueva conversación, privacidad, 503), banco (visibilidad, búsqueda, filtros, agregar, estadísticas, permisos), WebVTT, acceso a subtítulos y limpieza de datos. La fixture autouse `ia_generica` (en `conftest.py`) sustituye `ia.ejecutar_con_respaldo`: por defecto la IA «está caída»; cada prueba asigna `ia_generica["manejador"]` para devolver el objeto del esquema pedido.
 - `tests/test_api.py`: autenticación, procesamiento, visibilidad, intentos, edición, permisos, códigos, resultados/ganancia, CSV, medios, borrado de archivos, estadísticas y SUS.
 
 Frontend: `npm run lint` y `npm run build`.
@@ -477,7 +561,8 @@ plataforma-aprendizaje-ia/
 │   │   ├── schemas.py         # esquemas del adaptador de IA
 │   │   ├── schemas_api.py     # esquemas de la API
 │   │   ├── schemas_vivo.py    # esquemas de la clase en vivo
-│   │   ├── routers/           # auth, procesar, cuestionarios, intentos, docente, comparar, medios, estadisticas, sus, admin, cursos, coordinacion, vivo, notificaciones
+│   │   ├── schemas_s8.py      # tutor, banco y calificación de abiertas
+│   │   ├── routers/           # auth, procesar, cuestionarios, intentos, docente, comparar, medios, estadisticas, sus, admin, cursos, coordinacion, vivo, notificaciones, tutor, banco, videos
 │   │   └── services/
 │   │       ├── transcripcion.py
 │   │       ├── sus.py
@@ -488,6 +573,11 @@ plataforma-aprendizaje-ia/
 │   │       ├── vivo.py          # clase en vivo: estado en memoria, temporizador, difusión WebSocket
 │   │       ├── notificaciones.py # creación sin duplicados y generación diferida
 │   │       ├── reportes_pdf.py  # reportes PDF institucionales (reportlab)
+│   │       ├── tutor.py         # contexto, prompt y citas del tutor IA
+│   │       ├── calificacion.py  # calificación de abiertas con IA y fórmula del puntaje
+│   │       ├── verificacion.py  # verificación de calidad en lote
+│   │       ├── psicometria.py   # análisis de ítems (p, D, r_pb, distractores)
+│   │       ├── subtitulos.py    # WebVTT y transcripción en texto
 │   │       └── ia/            # base, gemini, groq_llm, ollama, respaldo
 │   ├── scripts/crear_demo.py  # cuentas demo
 │   ├── scripts/sembrar_estructura.py  # facultad, programa, asignaturas, RA de ejemplo, coordinador/admin demo y grupo (idempotente)

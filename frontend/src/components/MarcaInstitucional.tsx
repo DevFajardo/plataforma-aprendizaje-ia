@@ -22,13 +22,15 @@ interface Props {
   /** Nombre de la aplicación que acompaña a la marca (en la barra superior). */
   titulo?: string;
   className?: string;
+  /** Clases extra para el subtítulo (p. ej. ocultarlo en anchos donde la barra de navegación está llena). */
+  subtituloClase?: string;
 }
 
 /**
  * Marca institucional. Si existe `public/logo-cul.png` lo muestra sobre una placa blanca;
  * si no, usa un monograma neutro de texto («CUL»). No reproduce el escudo oficial.
  */
-export default function MarcaInstitucional({ variante = "barra", titulo, className }: Props) {
+export default function MarcaInstitucional({ variante = "barra", titulo, className, subtituloClase }: Props) {
   const hayLogo = useContext(ContextoLogo);
   const grande = variante === "panel";
   const sobreOscuro = variante !== "pie";
@@ -59,7 +61,7 @@ export default function MarcaInstitucional({ variante = "barra", titulo, classNa
         <span className={cx("truncate font-bold", grande ? "text-lg" : "text-sm sm:text-base", sobreOscuro ? "text-white" : "text-texto")}>
           {titulo ?? "Corporación Universitaria Latinoamericana"}
         </span>
-        <span className={cx("truncate text-[11px] sm:text-xs", sobreOscuro ? "text-white/85" : "text-suave")}>{NOMBRE_PROGRAMA}</span>
+        <span className={cx("truncate text-[11px] sm:text-xs", sobreOscuro ? "text-white/85" : "text-suave", subtituloClase)}>{NOMBRE_PROGRAMA}</span>
       </span>
     </span>
   );

@@ -62,7 +62,12 @@ _COLUMNAS_NUEVAS = {
         ("estimacion_manual_min", "INTEGER"),
         ("grupo_id", "INTEGER"),
     ],
-    "preguntas": [("ra_id", "INTEGER"), ("nivel_bloom", "VARCHAR(15)")],
+    "preguntas": [
+        ("ra_id", "INTEGER"),
+        ("nivel_bloom", "VARCHAR(15)"),
+        ("verificacion", "TEXT"),
+        ("banco_id", "INTEGER"),
+    ],
     "intentos": [("tipo", "VARCHAR(10) DEFAULT 'inicial'")],
 }
 

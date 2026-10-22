@@ -7,9 +7,20 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.modelos import Cuestionario, Intento, ParticipanteVivo, RespuestaVivo, SesionVivo, Tarea, Usuario, Video
+from app.modelos import (
+    ConversacionTutor,
+    Cuestionario,
+    Intento,
+    MensajeTutor,
+    ParticipanteVivo,
+    RespuestaVivo,
+    SesionVivo,
+    Tarea,
+    Usuario,
+    Video,
+)
 from app.routers import procesar
-from app.schemas_api import CuestionarioDetalle, CuestionarioResumen, PreguntaOut, RepasoEstado
+from app.schemas_api import CuestionarioDetalle, CuestionarioResumen, PreguntaOut, RepasoEstado, VerificacionOut
 from app.seguridad import usuario_actual
 from app.services.repasos import esta_vencido, repaso_pendiente
 from app.services.transcripcion import hash_vimeo
@@ -25,6 +36,16 @@ def cuestionario_visible(db: Session, cuestionario_id: int, usuario: Usuario) ->
     if c.creador_id != usuario.id and not c.publicado:
         raise HTTPException(status_code=403, detail="Este cuestionario no está disponible para ti.")
     return c
+
+
+def verificacion_de(p) -> VerificacionOut | None:
+    """Verificación de calidad guardada en la pregunta (None = sin verificar o JSON dañado)."""
+    if not p.verificacion:
+        return None
+    try:
+        return VerificacionOut.model_validate_json(p.verificacion)
+    except ValueError:
+        return None
 
 
 def _tipo_medio(video: Video) -> str:
@@ -97,6 +118,7 @@ def detalle(cuestionario_id: int, usuario: Usuario = Depends(usuario_actual), db
             repaso = RepasoEstado(disponible_desde=r.disponible_desde, vencido=esta_vencido(r))
     return CuestionarioDetalle(
         id=c.id,
+        video_id=c.video_id,
         titulo=c.titulo,
         resumen="" if oculto else c.resumen,
         ideas_clave=[] if oculto else json.loads(c.ideas_clave_json),
@@ -133,6 +155,8 @@ def detalle(cuestionario_id: int, usuario: Usuario = Depends(usuario_actual), db
                 explicacion=p.explicacion if es_creador else None,
                 ra_id=p.ra_id if es_creador else None,
                 nivel_bloom=p.nivel_bloom if es_creador else None,
+                verificacion=verificacion_de(p) if es_creador else None,
+                banco_id=p.banco_id if es_creador else None,
             )
             for p in c.preguntas
         ],
@@ -152,6 +176,10 @@ def borrar_cuestionario(db: Session, c: Cuestionario) -> Path | None:
         db.execute(delete(RespuestaVivo).where(RespuestaVivo.sesion_id.in_(ids_vivo)))
         db.execute(delete(ParticipanteVivo).where(ParticipanteVivo.sesion_id.in_(ids_vivo)))
         db.execute(delete(SesionVivo).where(SesionVivo.id.in_(ids_vivo)))
+    ids_conv = list(db.scalars(select(ConversacionTutor.id).where(ConversacionTutor.cuestionario_id == c.id)))
+    if ids_conv:  # conversaciones con el tutor IA
+        db.execute(delete(MensajeTutor).where(MensajeTutor.conversacion_id.in_(ids_conv)))
+        db.execute(delete(ConversacionTutor).where(ConversacionTutor.id.in_(ids_conv)))
     db.delete(c)
     db.flush()
 

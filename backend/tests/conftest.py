@@ -146,3 +146,24 @@ def intentar(cliente):
         return r.json()
 
     return _intentar
+
+
+@pytest.fixture(autouse=True)
+def ia_generica(monkeypatch):
+    """Simula `ejecutar_con_respaldo` (tutor, calificación de abiertas, verificación): sin internet ni IA real.
+
+    Por defecto la IA «está caída» (lanza RuntimeError). Una prueba asigna `ia_generica["manejador"] = f(prompt, esquema)`
+    para devolver un objeto del esquema pedido; `ia_generica["prompts"]` guarda los prompts recibidos.
+    """
+    from app.services import ia
+
+    estado = {"manejador": None, "prompts": []}
+
+    def falso(prompt, esquema):
+        estado["prompts"].append(prompt)
+        if estado["manejador"] is None:
+            raise RuntimeError("IA no disponible (simulada)")
+        return estado["manejador"](prompt, esquema), "falso"
+
+    monkeypatch.setattr(ia, "ejecutar_con_respaldo", falso)
+    return estado

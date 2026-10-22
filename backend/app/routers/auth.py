@@ -9,12 +9,16 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.modelos import (
     AlertaSeguimiento,
+    ConversacionTutor,
     Cuestionario,
     Grupo,
     Intento,
     Matricula,
+    MensajeTutor,
     Notificacion,
     ParticipanteVivo,
+    Pregunta,
+    PreguntaBanco,
     Repaso,
     RespuestaSUS,
     Tarea,
@@ -167,6 +171,15 @@ def eliminar_cuenta(datos: EliminarCuentaIn, usuario: Usuario = Depends(usuario_
             archivos.append(ruta)
     db.flush()
     db.execute(delete(Repaso).where(Repaso.usuario_id == usuario.id))
+    # Tutor IA y banco de preguntas del usuario
+    ids_conv = list(db.scalars(select(ConversacionTutor.id).where(ConversacionTutor.usuario_id == usuario.id)))
+    if ids_conv:
+        db.execute(delete(MensajeTutor).where(MensajeTutor.conversacion_id.in_(ids_conv)))
+        db.execute(delete(ConversacionTutor).where(ConversacionTutor.id.in_(ids_conv)))
+    ids_banco = list(db.scalars(select(PreguntaBanco.id).where(PreguntaBanco.autor_id == usuario.id)))
+    if ids_banco:
+        db.execute(update(Pregunta).where(Pregunta.banco_id.in_(ids_banco)).values(banco_id=None))
+        db.execute(delete(PreguntaBanco).where(PreguntaBanco.id.in_(ids_banco)))
     db.execute(delete(Notificacion).where(Notificacion.usuario_id == usuario.id))
     db.execute(update(ParticipanteVivo).where(ParticipanteVivo.usuario_id == usuario.id).values(usuario_id=None))
     db.execute(delete(Intento).where(Intento.usuario_id == usuario.id))

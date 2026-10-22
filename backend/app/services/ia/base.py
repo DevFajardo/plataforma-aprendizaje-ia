@@ -6,8 +6,13 @@ trabaja contra esta abstracción (Strategy), por lo que se puede cambiar o
 reordenar proveedores sin tocar la lógica de negocio.
 """
 from abc import ABC, abstractmethod
+from typing import TypeVar
+
+from pydantic import BaseModel
 
 from app.schemas import ResultadoIA
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class ProveedorIA(ABC):
@@ -18,6 +23,10 @@ class ProveedorIA(ABC):
     @abstractmethod
     def generar(self, transcripcion_texto: str, num_preguntas: int) -> ResultadoIA:
         """Devuelve el resumen y el cuestionario ya validados."""
+
+    @abstractmethod
+    def completar_json(self, prompt: str, esquema: type[T]) -> T:
+        """Tarea genérica: responde al `prompt` con un objeto que cumple `esquema` (modelo Pydantic)."""
 
     @abstractmethod
     def configurado(self) -> bool:

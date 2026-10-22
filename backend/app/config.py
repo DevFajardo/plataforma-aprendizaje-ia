@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     youtube_cookies: str = ""
     # Duración máxima (minutos) de los videos de YouTube/Vimeo que se transcriben con audio + Whisper.
     max_duracion_min: int = 180
+    # Mensajes diarios (24 h) que cada usuario puede enviar al tutor IA del video.
+    limite_tutor_diario: int = 30
 
     @property
     def origenes_cors(self) -> list[str]:

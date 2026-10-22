@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { Pregunta, RespuestaServidor } from "@/lib/tipos";
+import type { NivelCalificacion, Pregunta, RespuestaServidor } from "@/lib/tipos";
 import { Boton, Icono, Insignia, Textarea, cx } from "./ui";
 
 interface Props {
@@ -25,6 +25,14 @@ const TIPOS: Record<Pregunta["tipo"], string> = {
   opcion_multiple: "Opción múltiple",
   verdadero_falso: "Verdadero / Falso",
   abierta: "Abierta",
+};
+
+const ETIQUETA_NIVEL: Record<NivelCalificacion, string> = { insuficiente: "Insuficiente", basico: "Básico", bueno: "Bueno", excelente: "Excelente" };
+const TONO_NIVEL: Record<NivelCalificacion, "error" | "aviso" | "azul" | "exito"> = {
+  insuficiente: "error",
+  basico: "aviso",
+  bueno: "azul",
+  excelente: "exito",
 };
 
 export default function PreguntaCard({ indice, pregunta, onResponder, onSaltar, conFeedback = true }: Props) {
@@ -138,6 +146,21 @@ export default function PreguntaCard({ indice, pregunta, onResponder, onSaltar, 
             <p className="rounded-xl border border-info-borde bg-info-fondo p-3 text-info-texto">
               <strong>Respuesta modelo:</strong> {feedback.respuesta_correcta}
             </p>
+          )}
+          {mostrarCorreccion && feedback?.calificacion_ia && (
+            <div className="rounded-xl border border-borde bg-superficie-2 p-3 text-sm" aria-label="Calificación sugerida por la IA">
+              <p className="flex flex-wrap items-center gap-2 font-bold">
+                Calificación sugerida: {feedback.calificacion_ia.puntaje}/100
+                <Insignia tono={TONO_NIVEL[feedback.calificacion_ia.nivel]}>{ETIQUETA_NIVEL[feedback.calificacion_ia.nivel]}</Insignia>
+              </p>
+              <p className="mt-1.5 leading-relaxed">{feedback.calificacion_ia.retroalimentacion}</p>
+              {feedback.calificacion_ia.falto && (
+                <p className="mt-1.5 text-suave">
+                  <strong>Qué faltó:</strong> {feedback.calificacion_ia.falto}
+                </p>
+              )}
+              <p className="mt-2 text-xs text-suave">Es una sugerencia de la IA: la nota oficial la confirma tu docente.</p>
+            </div>
           )}
         </div>
       )}

@@ -18,7 +18,9 @@ import {
   TituloSeccion,
   type TonoBarra,
 } from "@/components/ui";
+import AnalisisItems from "@/components/AnalisisItems";
 import HistorialVivo from "@/components/HistorialVivo";
+import RevisionAbiertas from "@/components/RevisionAbiertas";
 import { descargarCsv, descargarPdfCuestionario, obtenerResultados } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import { formatearFecha } from "@/lib/fechas";
@@ -139,12 +141,14 @@ function Contenido() {
   const [descargando, setDescargando] = useState(false);
   const [pestana, setPestana] = useState<"resultados" | "vivo">("resultados");
 
+  const [recarga, setRecarga] = useState(0); // al cambiarlo se vuelven a pedir los resultados (p. ej. tras aprobar una nota)
+
   useEffect(() => {
     if (!usuario) return;
     obtenerResultados(Number(id))
       .then(setDatos)
       .catch((e) => setError(e instanceof Error ? e.message : "Error desconocido"));
-  }, [usuario, id]);
+  }, [usuario, id, recarga]);
 
   async function pdf() {
     setError(null);
@@ -241,6 +245,8 @@ function Contenido() {
 
                 <RetencionSeccion retencion={datos.retencion} />
 
+                <AnalisisItems items={datos.items} minimo={datos.items_minimo} intentos={datos.items_intentos} />
+
                 <section className="flex flex-col gap-4">
                   <TituloSeccion>Acierto por pregunta</TituloSeccion>
                   <Tarjeta>
@@ -275,6 +281,10 @@ function Contenido() {
                 {abiertas.length > 0 && (
                   <section className="flex flex-col gap-4">
                     <TituloSeccion>Preguntas abiertas</TituloSeccion>
+                    <p className="-mt-2 text-sm text-suave">
+                      La IA sugiere una nota con una rúbrica. Solo cuenta en el puntaje del intento cuando la apruebas o la ajustas: cada abierta aprobada suma
+                      nota/100 puntos y añade 1 al total.
+                    </p>
                     <div className="flex flex-col gap-2">
                       {abiertas.map((p) => (
                         <details key={p.pregunta_id} className="group rounded-xl border border-borde bg-superficie shadow-tarjeta">
@@ -284,14 +294,7 @@ function Contenido() {
                             </span>
                             <Icono nombre="chevron" className="transition group-open:rotate-180" />
                           </summary>
-                          <ul className="flex flex-col gap-2 border-t border-borde p-4 text-sm">
-                            {p.respuestas_abiertas.length === 0 && <li className="text-suave">Sin respuestas.</li>}
-                            {p.respuestas_abiertas.map((r, i) => (
-                              <li key={i} className="rounded-lg bg-superficie-2 p-3">
-                                <strong>{r.nombre}:</strong> {r.respuesta || <em>(vacía)</em>}
-                              </li>
-                            ))}
-                          </ul>
+                          <RevisionAbiertas pregunta={p} onCambio={() => setRecarga((n) => n + 1)} />
                         </details>
                       ))}
                     </div>

@@ -59,6 +59,7 @@ function Contenido() {
         <VisorCuestionario
           key={`${cuestionario.id}-${recarga}`}
           cuestionario={cuestionario}
+          onRecargar={() => setRecarga((n) => n + 1)}
           panel={
             cuestionario.es_creador ? (
               <PanelDocente

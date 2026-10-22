@@ -109,6 +109,9 @@ class Pregunta(Base):
         ForeignKey("resultados_aprendizaje.id", ondelete="SET NULL"), nullable=True, index=True
     )
     nivel_bloom: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    # Sprint 8: verificación de calidad con IA (JSON; nulo = sin verificar) y vínculo con el banco institucional
+    verificacion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    banco_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
     cuestionario: Mapped[Cuestionario] = relationship(back_populates="preguntas")
 
@@ -346,3 +349,57 @@ class Notificacion(Base):
     leida: Mapped[bool] = mapped_column(Boolean, default=False)
     clave: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)  # evita duplicados
     creada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+
+
+# ---------- Sprint 8: tutor IA, banco de preguntas ----------
+
+class ConversacionTutor(Base):
+    """Conversación de un usuario con el tutor IA sobre un cuestionario (la última creada es la activa)."""
+
+    __tablename__ = "conversaciones_tutor"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), index=True)
+    cuestionario_id: Mapped[int] = mapped_column(ForeignKey("cuestionarios.id", ondelete="CASCADE"), index=True)
+    creada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+
+    mensajes: Mapped[list["MensajeTutor"]] = relationship(
+        back_populates="conversacion", order_by="MensajeTutor.id", cascade="all, delete-orphan"
+    )
+
+
+class MensajeTutor(Base):
+    __tablename__ = "mensajes_tutor"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conversacion_id: Mapped[int] = mapped_column(ForeignKey("conversaciones_tutor.id", ondelete="CASCADE"), index=True)
+    rol: Mapped[str] = mapped_column(String(10))  # usuario | tutor
+    texto: Mapped[str] = mapped_column(Text)
+    citas_json: Mapped[str] = mapped_column(Text, default="[]")  # [{marca_tiempo, fragmento}]
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora, index=True)
+
+    conversacion: Mapped[ConversacionTutor] = relationship(back_populates="mensajes")
+
+
+class PreguntaBanco(Base):
+    """Pregunta guardada en el banco institucional (copia independiente del cuestionario de origen)."""
+
+    __tablename__ = "banco_preguntas"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    autor_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), index=True)
+    visibilidad: Mapped[str] = mapped_column(String(15), default="institucional")  # institucional | privada
+    tipo: Mapped[str] = mapped_column(String(30))
+    enunciado: Mapped[str] = mapped_column(Text)
+    opciones_json: Mapped[str] = mapped_column(Text, default="[]")
+    respuesta_correcta: Mapped[str] = mapped_column(Text)
+    explicacion: Mapped[str] = mapped_column(Text, default="")
+    nivel_bloom: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    ra_codigo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    ra_descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    asignatura_nombre: Mapped[str | None] = mapped_column(String(150), nullable=True, index=True)
+    etiquetas_json: Mapped[str] = mapped_column(Text, default="[]")
+    verificacion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+
+    autor: Mapped[Usuario] = relationship()
