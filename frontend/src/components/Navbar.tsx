@@ -116,8 +116,9 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b-4 border-cul-naranja bg-barra-superior text-white shadow-md">
       <nav aria-label="Principal" className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        <Link href="/" aria-label="Aprendizaje Activo CUL, ir al inicio" className="min-w-0 rounded-md xl:shrink-0">
+        <Link href="/" className="min-w-0 rounded-md xl:shrink-0">
           <MarcaInstitucional titulo="Aprendizaje Activo" subtituloClase="xl:hidden" />
+          <span className="sr-only"> (ir al inicio)</span>
         </Link>
 
         {/* Navegación de escritorio */}

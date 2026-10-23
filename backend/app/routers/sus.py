@@ -44,12 +44,11 @@ def responder(datos: SusIn, usuario: Usuario = Depends(usuario_actual), db: Sess
     return _salida(r)
 
 
-@router.get("/mia", response_model=SusOut)
+@router.get("/mia", response_model=SusOut | None)
 def mia(usuario: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
     r = db.scalar(select(RespuestaSUS).where(RespuestaSUS.usuario_id == usuario.id))
-    if r is None:
-        raise HTTPException(status_code=404, detail="Aún no has respondido la encuesta.")
-    return _salida(r)
+    # 200 con null (no 404): no tener respuesta es un estado normal y no debe ensuciar la consola del navegador.
+    return None if r is None else _salida(r)
 
 
 @router.get("/resumen", response_model=SusResumen)

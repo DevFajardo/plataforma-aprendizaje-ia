@@ -14,7 +14,7 @@ export default function NoEncontrada() {
         <p aria-hidden="true" className="text-6xl font-extrabold tracking-tight text-primario sm:text-7xl">
           404
         </p>
-        <h1 className="text-2xl font-extrabold sm:text-3xl">No encontramos esta página</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">No encontramos esta página</h1>
         <p className="max-w-md text-suave">
           Puede que el enlace esté mal escrito o que el contenido ya no exista. Revisa la dirección o vuelve al inicio para seguir aprendiendo.
         </p>

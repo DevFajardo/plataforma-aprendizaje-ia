@@ -58,6 +58,9 @@ export function guardarToken(token: string | null): void {
   try {
     if (token) localStorage.setItem(CLAVE_TOKEN, token);
     else localStorage.removeItem(CLAVE_TOKEN);
+    // Marca para que la página de inicio sepa (antes de hidratar) si hay una sesión guardada.
+    if (token) document.documentElement.setAttribute("data-sesion", "1");
+    else document.documentElement.removeAttribute("data-sesion");
   } catch {
     /* almacenamiento no disponible */
   }

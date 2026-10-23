@@ -1,7 +1,8 @@
 import type { Semaforo } from "@/lib/tipos";
 import { BarraPorcentaje, Insignia, type TonoBarra } from "./ui";
 
-export const pct = (v: number | null) => (v === null ? "—" : `${String(v).replace(".", ",")}%`);
+import { pct } from "@/lib/formato";
+export { pct };
 
 const TONO: Record<Semaforo, TonoBarra> = { verde: "exito", amarillo: "aviso", rojo: "error", sin_datos: "primario" };
 const TEXTO: Record<Semaforo, string> = { verde: "Logrado", amarillo: "En desarrollo", rojo: "Crítico", sin_datos: "Sin datos" };

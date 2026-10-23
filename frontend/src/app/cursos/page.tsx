@@ -30,6 +30,7 @@ import {
 import { useRequiereLogin } from "@/lib/auth";
 import { formatearFecha } from "@/lib/fechas";
 import type { Asignatura, Grupo, Matriculado } from "@/lib/tipos";
+import { useToast } from "@/components/ui/Toast";
 
 /** Periodo académico por defecto: año y semestre en curso (p. ej. 2026-2). */
 function periodoActual() {
@@ -45,6 +46,7 @@ function TarjetaGrupo({ g, esDocente, alCambiar, alError }: { g: Grupo; esDocent
   const [periodo, setPeriodo] = useState(g.periodo);
   const [eliminando, setEliminando] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const { avisar } = useToast();
 
   const falla = (e: unknown) => alError(e instanceof Error ? e.message : "Error desconocido");
 
@@ -84,6 +86,7 @@ function TarjetaGrupo({ g, esDocente, alCambiar, alError }: { g: Grupo; esDocent
     try {
       await navigator.clipboard.writeText(g.codigo_ingreso);
       setCopiado(true);
+      avisar("Código copiado al portapapeles.");
       setTimeout(() => setCopiado(false), 2000);
     } catch {
       alError(`No se pudo copiar. El código es ${g.codigo_ingreso}.`);
@@ -113,10 +116,10 @@ function TarjetaGrupo({ g, esDocente, alCambiar, alError }: { g: Grupo; esDocent
         </div>
         <div className="text-sm text-suave">
           <p>
-            <strong className="text-texto">{g.num_matriculados}</strong> matriculados
+            <strong className="text-texto">{g.num_matriculados}</strong> {g.num_matriculados === 1 ? "matriculado" : "matriculados"}
           </p>
           <p>
-            <strong className="text-texto">{g.num_cuestionarios}</strong> cuestionarios asignados
+            <strong className="text-texto">{g.num_cuestionarios}</strong> {g.num_cuestionarios === 1 ? "cuestionario asignado" : "cuestionarios asignados"}
           </p>
         </div>
       </div>
@@ -168,6 +171,7 @@ function TarjetaGrupo({ g, esDocente, alCambiar, alError }: { g: Grupo; esDocent
           onConfirmar={async () => {
             try {
               await eliminarGrupo(g.id);
+              avisar("Grupo eliminado.");
               alCambiar();
             } catch (e) {
               falla(e);
@@ -207,6 +211,7 @@ function TarjetaGrupo({ g, esDocente, alCambiar, alError }: { g: Grupo; esDocent
 }
 
 export default function CursosPage() {
+  const { avisar } = useToast();
   const { usuario, cargando } = useRequiereLogin();
   const [grupos, setGrupos] = useState<Grupo[] | null>(null);
   const [asignaturas, setAsignaturas] = useState<Asignatura[]>([]);
@@ -246,6 +251,7 @@ export default function CursosPage() {
     try {
       await crearGrupo(Number(asignaturaId), periodo.trim(), nombre.trim());
       setNombre("");
+      avisar("Grupo creado.");
       cargar();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -304,7 +310,7 @@ export default function CursosPage() {
           </Tarjeta>
         )}
 
-        {error && <Alerta tipo="error">{error}</Alerta>}
+        {error && <Alerta tipo="error" reintentar={cargar}>{error}</Alerta>}
         {grupos === null && !error && <EsqueletoPagina tarjetas={2} />}
         {grupos?.length === 0 && (
           <EstadoVacio icono="grupo" titulo="Aún no tienes grupos">

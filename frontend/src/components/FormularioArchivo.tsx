@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { BarraPorcentaje, Boton, Icono, Select, cx } from "./ui";
+import { pct } from "@/lib/formato";
 
 const EXTENSIONES = ["mp4", "webm", "mov", "mkv", "mp3", "wav", "m4a", "ogg"];
 export const MAX_SUBIDA_MB = 200;
@@ -102,7 +103,7 @@ export default function FormularioArchivo({ deshabilitado, progreso, onEnviar }:
       {progreso !== null && (
         <div>
           <BarraPorcentaje valor={progreso} etiqueta="Progreso de la subida" alto="lg" />
-          <p className="mt-1.5 text-sm text-suave">{progreso < 100 ? `Subiendo… ${progreso}%` : "Subida completa. Procesando…"}</p>
+          <p className="mt-1.5 text-sm text-suave">{progreso < 100 ? `Subiendo… ${pct(progreso)}` : "Subida completa. Procesando…"}</p>
         </div>
       )}
 

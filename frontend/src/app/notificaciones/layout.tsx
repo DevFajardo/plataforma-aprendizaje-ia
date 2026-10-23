@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false },
   title: "Notificaciones",
   description: "Avisos de cuestionarios nuevos, repasos pendientes y alertas.",
 };

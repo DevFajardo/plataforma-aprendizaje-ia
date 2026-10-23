@@ -1,8 +1,8 @@
 "use client";
 
+import { pct } from "@/lib/formato";
 import type { ItemAnalisis } from "@/lib/tipos";
 import { BarraPorcentaje, Icono, Insignia, Tarjeta, TituloSeccion, type TonoBarra } from "./ui";
-
 const num = (v: number | null, dec = 2) => (v === null ? "—" : v.toFixed(dec).replace(".", ","));
 
 function tonoDificultad(texto: string): "exito" | "aviso" | "error" | "azul" {
@@ -46,11 +46,11 @@ function Distractores({ item }: { item: ItemAnalisis }) {
               </div>
               <div className="flex items-center gap-3">
                 <BarraPorcentaje valor={d.porcentaje} etiqueta={`Porcentaje que eligió la opción ${d.letra}`} tono={tono} className="flex-1" />
-                <span className="w-14 shrink-0 text-right font-bold">{String(d.porcentaje).replace(".", ",")} %</span>
+                <span className="w-14 shrink-0 text-right font-bold">{pct(d.porcentaje)}</span>
               </div>
               {d.porcentaje_superior !== null && d.porcentaje_inferior !== null && (
                 <p className="mt-1 text-xs text-suave">
-                  Grupo superior: {String(d.porcentaje_superior).replace(".", ",")} % · grupo inferior: {String(d.porcentaje_inferior).replace(".", ",")} %
+                  Grupo superior: {pct(d.porcentaje_superior)} · grupo inferior: {pct(d.porcentaje_inferior)}
                 </p>
               )}
             </li>
@@ -83,7 +83,7 @@ export default function AnalisisItems({ items, minimo, intentos }: { items: Item
       <TituloSeccion>Análisis de ítems</TituloSeccion>
       <Tarjeta className="flex flex-col gap-4">
         <p className="text-sm text-suave">
-          Calculado con los <strong className="text-texto">{intentos}</strong> intento(s) inicial(es) finalizado(s). <strong className="text-texto">p</strong> = proporción de
+          Calculado con los <strong className="text-texto">{intentos}</strong> {intentos === 1 ? "intento inicial finalizado" : "intentos iniciales finalizados"}. <strong className="text-texto">p</strong> = proporción de
           aciertos (dificultad) · <strong className="text-texto">D</strong> = diferencia de aciertos entre el 27 % de mayor y de menor puntaje (discriminación) ·{" "}
           <strong className="text-texto">r<sub>pb</sub></strong> = correlación punto-biserial con el puntaje total. Se muestran los índices con al menos {minimo}{" "}
           respuestas por pregunta.
@@ -128,7 +128,7 @@ export default function AnalisisItems({ items, minimo, intentos }: { items: Item
         </ul>
 
         {/* Tablet y escritorio: tabla */}
-        <div className="hidden overflow-x-auto rounded-xl border border-borde md:block">
+        <div tabIndex={0} role="region" aria-label="Análisis de ítems" className="hidden overflow-x-auto rounded-xl border border-borde md:block">
           <table className="w-full text-left text-sm">
             <thead className="bg-superficie-2">
               <tr>

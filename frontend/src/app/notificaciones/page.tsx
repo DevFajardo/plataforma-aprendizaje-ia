@@ -6,10 +6,12 @@ import { Alerta, Boton, EncabezadoPagina, EsqueletoPagina, EstadoVacio, Pagina, 
 import { listarNotificaciones, marcarNotificacionLeida, marcarTodasLeidas } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import type { Notificacion, PaginaNotificaciones } from "@/lib/tipos";
+import { useToast } from "@/components/ui/Toast";
 
 const POR_PAGINA = 15;
 
 export default function NotificacionesPage() {
+  const { avisar } = useToast();
   const { usuario, cargando } = useRequiereLogin();
   const [pagina, setPagina] = useState(1);
   const [datos, setDatos] = useState<PaginaNotificaciones | null>(null);
@@ -43,6 +45,7 @@ export default function NotificacionesPage() {
   async function leerTodas() {
     try {
       await marcarTodasLeidas();
+      avisar("Todas las notificaciones quedaron como leídas.");
       await cargar(pagina);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo completar la acción.");

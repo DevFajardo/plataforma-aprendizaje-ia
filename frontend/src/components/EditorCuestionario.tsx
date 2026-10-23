@@ -227,6 +227,7 @@ export default function EditorCuestionario({ cuestionario: c, onTerminar }: Prop
   return (
     <div className="flex flex-col gap-8">
       <EncabezadoPagina
+        migas={[{ texto: "Mis cuestionarios", href: "/cuestionarios" }, { texto: c.titulo }, { texto: "Editar" }]}
         titulo="Editando cuestionario"
         descripcion="Ajusta el título, el resumen, las ideas clave y las preguntas. Los cambios se aplican al guardar."
         acciones={

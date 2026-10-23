@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import type { CuestionarioDetalle, Grupo } from "@/lib/tipos";
 import { origenPublico } from "@/lib/urlPublica";
 import { Alerta, Boton, BotonEnlace, Icono, Input, Insignia, Select, cx } from "./ui";
+import { useToast } from "@/components/ui/Toast";
 
 interface Props {
   cuestionario: CuestionarioDetalle;
@@ -19,6 +20,7 @@ interface Props {
 const OPCIONES_REPASO = [1, 3, 7, 14];
 
 export default function PanelDocente({ cuestionario: c, onEditar, onPublicado, onCambio }: Props) {
+  const { avisar } = useToast();
   const { usuario } = useAuth();
   const router = useRouter();
   const esDocente = usuario?.rol === "docente";
@@ -57,6 +59,7 @@ export default function PanelDocente({ cuestionario: c, onEditar, onPublicado, o
       const enviar = !c.publicado && c.estimacion_manual_min === null && Number.isFinite(minutos) && minutos >= 1;
       const r = await publicarCuestionario(c.id, !c.publicado, enviar ? minutos : undefined);
       onPublicado(r.publicado, enviar ? minutos : undefined);
+      avisar(r.publicado ? "Cuestionario publicado. Ya puedes compartir el enlace." : "Cuestionario despublicado.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
@@ -118,6 +121,7 @@ export default function PanelDocente({ cuestionario: c, onEditar, onPublicado, o
     try {
       await navigator.clipboard.writeText(enlace);
       setCopiado(true);
+      avisar("Enlace copiado al portapapeles.");
       setTimeout(() => setCopiado(false), 2500);
     } catch {
       setError(`No se pudo copiar automáticamente. Copia este enlace: ${enlace}`);

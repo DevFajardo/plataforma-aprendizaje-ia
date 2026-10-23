@@ -81,7 +81,7 @@ export default function ResultadosSusPage() {
   return (
     <Pagina ancho="lg">
       <EncabezadoPagina
-        atras={{ href: "/panel", texto: "Volver al panel" }}
+        migas={[{ texto: "Panel", href: "/panel" }, { texto: "Encuesta SUS" }]}
         titulo="Resultados de la encuesta SUS"
         acciones={
           <Boton onClick={csv} cargando={descargando} disabled={!datos || datos.n === 0}>
@@ -90,7 +90,7 @@ export default function ResultadosSusPage() {
         }
       />
 
-      {error && <Alerta tipo="error" className="mb-4">{error}</Alerta>}
+      {error && <Alerta tipo="error" className="mb-4" reintentar>{error}</Alerta>}
       {!datos && !error && <EsqueletoPagina />}
 
       {datos && datos.n === 0 && (

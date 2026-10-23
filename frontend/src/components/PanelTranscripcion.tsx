@@ -90,7 +90,7 @@ export default function PanelTranscripcion({
     }
   }
 
-  if (error && !datos) return <Alerta tipo="error">{error}</Alerta>;
+  if (error && !datos) return <Alerta tipo="error" reintentar>{error}</Alerta>;
   if (!datos)
     return (
       <div className="flex items-center gap-2 text-sm text-suave">
@@ -114,7 +114,7 @@ export default function PanelTranscripcion({
         value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)}
         placeholder="Escribe una palabra…"
-        ayuda={q ? `${visibles.length} resultado(s)` : undefined}
+        ayuda={q ? `${visibles.length} ${visibles.length === 1 ? "resultado" : "resultados"}` : undefined}
       />
       {error && <Alerta tipo="error">{error}</Alerta>}
       {visibles.length === 0 ? (

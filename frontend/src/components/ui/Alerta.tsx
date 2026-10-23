@@ -1,5 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { cx } from "./cx";
+import Boton from "./Boton";
 import Icono, { type NombreIcono } from "./Icono";
 
 export type TipoAlerta = "info" | "exito" | "advertencia" | "error";
@@ -18,10 +21,12 @@ interface Props {
   /** Botones o enlaces a la derecha (o debajo en móvil). */
   acciones?: ReactNode;
   className?: string;
+  /** Muestra un botón «Reintentar»: `true` recarga la página; una función se ejecuta al pulsarlo. */
+  reintentar?: boolean | (() => void);
 }
 
 /** Mensaje destacado. Los errores usan role="alert"; el resto, role="status". */
-export default function Alerta({ tipo = "info", titulo, children, acciones, className }: Props) {
+export default function Alerta({ tipo = "info", titulo, children, acciones, className, reintentar }: Props) {
   const { clase, icono } = ESTILO[tipo];
   return (
     <div
@@ -35,7 +40,16 @@ export default function Alerta({ tipo = "info", titulo, children, acciones, clas
           <div className="leading-relaxed">{children}</div>
         </div>
       </div>
-      {acciones && <div className="flex shrink-0 flex-wrap gap-2">{acciones}</div>}
+      {(acciones || reintentar) && (
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {acciones}
+          {reintentar && (
+            <Boton tamano="sm" variante="secundario" onClick={() => (typeof reintentar === "function" ? reintentar() : window.location.reload())}>
+              Reintentar
+            </Boton>
+          )}
+        </div>
+      )}
     </div>
   );
 }

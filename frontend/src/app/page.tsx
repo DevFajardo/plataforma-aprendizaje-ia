@@ -137,10 +137,19 @@ export default function Home() {
   const { usuario, cargando } = useAuth();
 
   if (cargando) {
+    // El servidor no sabe si hay sesión: se pinta la página pública (buen LCP y SEO) y, si el navegador tiene un token
+    // guardado, el script del layout marca <html data-sesion> y CSS oculta la página pública y muestra el esqueleto.
     return (
-      <Pagina ancho="xl">
-        <EsqueletoPagina tarjetas={3} />
-      </Pagina>
+      <>
+        <div className="sesion-oculta">
+          <Landing />
+        </div>
+        <div className="sesion-esqueleto">
+          <Pagina ancho="xl">
+            <EsqueletoPagina tarjetas={3} />
+          </Pagina>
+        </div>
+      </>
     );
   }
   // Visitantes: página de presentación. Con sesión: pantalla de generar.

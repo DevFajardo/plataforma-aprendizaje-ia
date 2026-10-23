@@ -5,6 +5,7 @@ import { descargarCsvVivo, historialClaseVivo } from "@/lib/api";
 import { formatearFecha } from "@/lib/fechas";
 import type { HistorialVivo as Historial } from "@/lib/tipos";
 import { Alerta, BarraPorcentaje, Boton, EsqueletoPagina, EstadoVacio, Icono, Insignia, Tarjeta, type TonoBarra } from "./ui";
+import { pct, plural } from "@/lib/formato";
 
 function tono(p: number): TonoBarra {
   if (p < 60) return "error";
@@ -36,7 +37,7 @@ export default function HistorialVivo({ cuestionarioId }: { cuestionarioId: numb
     }
   }
 
-  if (error && !sesiones) return <Alerta tipo="error">{error}</Alerta>;
+  if (error && !sesiones) return <Alerta tipo="error" reintentar>{error}</Alerta>;
   if (!sesiones) return <EsqueletoPagina tarjetas={1} />;
   if (sesiones.length === 0) {
     return (
@@ -67,7 +68,7 @@ export default function HistorialVivo({ cuestionarioId }: { cuestionarioId: numb
                 {s.participantes} {s.participantes === 1 ? "participante" : "participantes"}
               </Insignia>
               <Insignia tono={s.promedio_acierto === null ? "neutro" : s.promedio_acierto >= 60 ? "exito" : "error"}>
-                Acierto promedio: {s.promedio_acierto === null ? "—" : `${s.promedio_acierto}%`}
+                Acierto promedio: {s.promedio_acierto === null ? "—" : `${pct(s.promedio_acierto)}`}
               </Insignia>
             </div>
           </div>
@@ -79,15 +80,15 @@ export default function HistorialVivo({ cuestionarioId }: { cuestionarioId: numb
                 </p>
                 {p.porcentaje_acierto === null ? (
                   <p className="text-xs text-suave">
-                    {p.tipo === "abierta" ? "Pregunta abierta (no puntúa)" : "Sin respuestas"} · {p.respuestas} respuestas
+                    {p.tipo === "abierta" ? "Pregunta abierta (no puntúa)" : "Sin respuestas"} · {plural(p.respuestas, "respuesta")}
                   </p>
                 ) : (
                   <>
                     <div className="flex items-center gap-3">
                       <BarraPorcentaje valor={p.porcentaje_acierto} etiqueta={`Acierto de la pregunta ${p.orden + 1}`} tono={tono(p.porcentaje_acierto)} className="flex-1" />
-                      <span className="w-12 shrink-0 text-right text-sm font-bold">{p.porcentaje_acierto}%</span>
+                      <span className="w-12 shrink-0 text-right text-sm font-bold">{pct(p.porcentaje_acierto)}</span>
                     </div>
-                    <p className="mt-1 text-xs text-suave">{p.respuestas} respuestas</p>
+                    <p className="mt-1 text-xs text-suave">{plural(p.respuestas, "respuesta")}</p>
                   </>
                 )}
               </li>

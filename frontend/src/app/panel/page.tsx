@@ -19,16 +19,16 @@ import {
 import { listarRepasos, obtenerEstadisticas, obtenerMiSus } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import { formatearFecha } from "@/lib/fechas";
+import { pct, plural } from "@/lib/formato";
 import type { Estadisticas, Repaso } from "@/lib/tipos";
 
-const pct = (v: number | null) => (v === null ? "—" : `${v}%`);
 
 export default function PanelPage() {
   const { usuario, cargando } = useRequiereLogin();
   const [datos, setDatos] = useState<Estadisticas | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [respondioSus, setRespondioSus] = useState<boolean | null>(null);
-  const [repasos, setRepasos] = useState<Repaso[]>([]);
+  const [repasos, setRepasos] = useState<Repaso[] | null>(null);
 
   useEffect(() => {
     if (!usuario) return;
@@ -71,7 +71,7 @@ export default function PanelPage() {
           </Alerta>
         )}
 
-        {repasos.length > 0 && (
+        {repasos !== null && repasos.length > 0 && (
           <section aria-label="Repasos pendientes" className="rounded-2xl border border-borde border-l-[6px] border-l-cul-naranja bg-superficie p-4 shadow-tarjeta sm:p-6">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-aviso-fondo text-aviso-texto">
@@ -118,10 +118,11 @@ export default function PanelPage() {
           </Alerta>
         )}
 
-        {error && <Alerta tipo="error">{error}</Alerta>}
-        {!datos && !error && <EsqueletoPagina />}
+        {error && <Alerta tipo="error" reintentar>{error}</Alerta>}
+        {/* Se espera a todas las cargas para que los bloques no se desplacen al llegar (evita saltos de diseño) */}
+        {(!datos || repasos === null || respondioSus === null) && !error && <EsqueletoPagina />}
 
-        {datos && (
+        {datos && repasos !== null && respondioSus !== null && (
           <>
             <section aria-label="Métricas personales">
               <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
@@ -161,11 +162,11 @@ export default function PanelPage() {
             <section className="flex flex-col gap-3">
               <TituloSeccion>Temas a reforzar</TituloSeccion>
               {datos.temas_a_reforzar.length === 0 ? (
-                <p className="text-suave">
+                <EstadoVacio icono={datos.intentos_finalizados === 0 ? "intentos" : "check"} titulo={datos.intentos_finalizados === 0 ? "Aún no hay temas por reforzar" : "¡Muy bien! Sin temas pendientes"}>
                   {datos.intentos_finalizados === 0
                     ? "Cuando respondas cuestionarios, aquí verás las preguntas que más se te dificultan."
-                    : "¡Muy bien! No has fallado ninguna pregunta cerrada."}
-                </p>
+                    : "No has fallado ninguna pregunta cerrada."}
+                </EstadoVacio>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {datos.temas_a_reforzar.map((t) => (
@@ -212,7 +213,7 @@ export default function PanelPage() {
                         <Metrica titulo="Promedio estimado manual" valor={`${d.tiempo.promedio_manual_min} min`} />
                         <Metrica titulo="Ahorro" valor={pct(d.tiempo.ahorro_pct)} />
                       </div>
-                      <p className="mt-3 text-xs text-suave">Basado en {d.tiempo.cuestionarios_con_estimacion} cuestionario(s) con estimación.</p>
+                      <p className="mt-3 text-xs text-suave">Basado en {plural(d.tiempo.cuestionarios_con_estimacion, "cuestionario")} con estimación.</p>
                     </>
                   )}
                 </Tarjeta>
@@ -258,7 +259,7 @@ export default function PanelPage() {
                       ))}
                     </ul>
                     {/* Tablet y escritorio: tabla */}
-                    <div className="hidden overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-tarjeta md:block">
+                    <div tabIndex={0} role="region" aria-label="Cuestionarios publicados" className="hidden overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-tarjeta md:block">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-superficie-2">
                           <tr>

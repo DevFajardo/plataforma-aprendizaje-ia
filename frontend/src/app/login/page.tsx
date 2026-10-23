@@ -6,6 +6,17 @@ import LayoutAuth from "@/components/LayoutAuth";
 import { Alerta, Boton, Enlace, EsqueletoPagina, Input, Pagina } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { destinoSeguro } from "@/lib/navegacion";
+import { REGEX_CORREO, useValidacion } from "@/lib/validacion";
+
+interface Valores {
+  email: string;
+  password: string;
+}
+const REGLAS = {
+  email: (v: string) =>
+    !v.trim() ? "Escribe tu correo electrónico." : !REGEX_CORREO.test(v.trim()) ? "Revisa el correo: debe tener el formato nombre@dominio.com." : null,
+  password: (v: string) => (!v ? "Escribe tu contraseña." : null),
+};
 
 function Contenido() {
   const { usuario, login } = useAuth();
@@ -16,6 +27,8 @@ function Contenido() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const { errores, ref, validarCampo, validarTodo, limpiar } = useValidacion<Valores>(REGLAS);
+  const valores: Valores = { email, password };
 
   useEffect(() => {
     if (usuario) router.replace(destino);
@@ -24,6 +37,7 @@ function Contenido() {
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!validarTodo(valores)) return;
     setEnviando(true);
     try {
       await login(email.trim(), password);
@@ -46,14 +60,30 @@ function Contenido() {
         </>
       }
     >
-      <form onSubmit={enviar} className="flex flex-col gap-4">
-        <Input etiqueta="Correo electrónico" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+      <form onSubmit={enviar} noValidate ref={ref} className="flex flex-col gap-4">
+        <Input
+          etiqueta="Correo electrónico"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            limpiar("email");
+          }}
+          onBlur={() => email && validarCampo("email", valores)}
+          error={errores.email}
+          autoComplete="email"
+        />
         <Input
           etiqueta="Contraseña"
           type="password"
           required
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            limpiar("password");
+          }}
+          error={errores.password}
           autoComplete="current-password"
         />
         {error && <Alerta tipo="error">{error}</Alerta>}

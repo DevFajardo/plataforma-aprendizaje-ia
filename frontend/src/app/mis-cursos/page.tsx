@@ -18,14 +18,16 @@ import {
 import { misCursos, salirDelCurso, unirseACurso } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import type { MiCurso } from "@/lib/tipos";
+import { useToast } from "@/components/ui/Toast";
+import { plural } from "@/lib/formato";
 
 export default function MisCursosPage() {
+  const { avisar } = useToast();
   const { usuario, cargando } = useRequiereLogin();
   const [cursos, setCursos] = useState<MiCurso[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [codigo, setCodigo] = useState("");
   const [uniendo, setUniendo] = useState(false);
-  const [exito, setExito] = useState<string | null>(null);
   const [saliendo, setSaliendo] = useState<number | null>(null);
 
   const cargar = useCallback(() => {
@@ -41,11 +43,10 @@ export default function MisCursosPage() {
   async function unirse(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setExito(null);
     setUniendo(true);
     try {
       const c = await unirseACurso(codigo);
-      setExito(`Te matriculaste en ${c.asignatura} · ${c.nombre} (${c.periodo}).`);
+      avisar(`Te matriculaste en ${c.asignatura} · ${c.nombre} (${c.periodo}).`);
       setCodigo("");
       cargar();
     } catch (err) {
@@ -106,8 +107,7 @@ export default function MisCursosPage() {
           </form>
         </Tarjeta>
 
-        {error && <Alerta tipo="error">{error}</Alerta>}
-        {exito && <Alerta tipo="exito">{exito}</Alerta>}
+        {error && <Alerta tipo="error" reintentar={cursos === null ? cargar : undefined}>{error}</Alerta>}
 
         {cursos === null && !error && <EsqueletoPagina tarjetas={2} />}
         {cursos?.length === 0 && (
@@ -144,7 +144,7 @@ export default function MisCursosPage() {
                       >
                         <span className="min-w-0 break-words font-semibold">{q.titulo}</span>
                         <span className="text-xs text-suave">
-                          {q.num_preguntas} preguntas
+                          {plural(q.num_preguntas, "pregunta")}
                           {q.mejor_puntaje !== null && ` · Mejor resultado: ${q.mejor_puntaje}/${q.mejor_total}`}
                         </span>
                       </Link>

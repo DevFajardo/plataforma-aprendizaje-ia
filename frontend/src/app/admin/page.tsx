@@ -22,6 +22,7 @@ import {
 import * as api from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import type { Asignatura, Facultad, Programa, ResultadoAprendizaje, UsuarioAdmin } from "@/lib/tipos";
+import { plural } from "@/lib/formato";
 
 const mensajeError = (e: unknown) => (e instanceof Error ? e.message : "Error desconocido");
 
@@ -141,7 +142,7 @@ function TabFacultades({ alError }: PropsTab) {
             <Fila
               key={f.id}
               titulo={f.nombre}
-              detalle={`${f.num_programas} programa(s)`}
+              detalle={plural(f.num_programas, "programa")}
               onEditar={() => { setEditando(f); setNombre(f.nombre); }}
               onEliminar={() => api.adminEliminarFacultad(f.id).then(recargar).catch((e) => alError(mensajeError(e)))}
               textoEliminar="¿Eliminar esta facultad? Solo es posible si no tiene programas."
@@ -530,7 +531,7 @@ export default function AdminPage() {
 
   return (
     <Pagina ancho="lg">
-      <EncabezadoPagina titulo="Administración" descripcion="Estructura académica institucional (facultades, programas, asignaturas y resultados de aprendizaje) y gestión de usuarios." />
+      <EncabezadoPagina migas={[{ texto: "Panel", href: "/panel" }, { texto: "Administración" }]} titulo="Administración" descripcion="Estructura académica institucional (facultades, programas, asignaturas y resultados de aprendizaje) y gestión de usuarios." />
       {error && <Alerta tipo="error" className="mb-4">{error}</Alerta>}
       <Pestanas etiqueta="Secciones de administración" items={PESTANAS} activa={pestana} onCambiar={(id) => { setError(null); setPestana(id); }}>
         <TituloSeccion className="sr-only">{PESTANAS.find((p) => p.id === pestana)?.texto}</TituloSeccion>

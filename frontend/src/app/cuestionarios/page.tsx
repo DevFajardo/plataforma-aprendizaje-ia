@@ -19,6 +19,8 @@ import { eliminarCuestionario, listarCuestionarios } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import { formatearFecha } from "@/lib/fechas";
 import type { CuestionarioResumen } from "@/lib/tipos";
+import { useToast } from "@/components/ui/Toast";
+import { plural } from "@/lib/formato";
 
 function TarjetaCuestionario({
   c,
@@ -59,7 +61,7 @@ function TarjetaCuestionario({
           {c.modo === "control" && <Insignia tono="neutro">Grupo control</Insignia>}
         </div>
         <p className="text-sm text-suave">
-          {formatearFecha(c.creado_en, "corta")} · {c.num_preguntas} preguntas
+          {formatearFecha(c.creado_en, "corta")} · {plural(c.num_preguntas, "pregunta")}
         </p>
         <p className="text-sm font-semibold">
           {c.mejor_puntaje !== null ? `Mejor puntaje: ${c.mejor_puntaje}/${c.mejor_total}` : <span className="font-normal text-suave">Sin intentos finalizados</span>}
@@ -90,6 +92,7 @@ function TarjetaCuestionario({
 }
 
 export default function CuestionariosPage() {
+  const { avisar } = useToast();
   const { usuario, cargando } = useRequiereLogin();
   const [lista, setLista] = useState<CuestionarioResumen[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +108,7 @@ export default function CuestionariosPage() {
     try {
       await eliminarCuestionario(c.id);
       setLista((l) => l?.filter((x) => x.id !== c.id) ?? null);
+      avisar("Cuestionario eliminado.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     }
@@ -133,7 +137,7 @@ export default function CuestionariosPage() {
         }
       />
 
-      {error && <Alerta tipo="error" className="mb-4">{error}</Alerta>}
+      {error && <Alerta tipo="error" className="mb-4" reintentar={lista === null}>{error}</Alerta>}
       {lista === null && !error && <EsqueletoPagina />}
 
       {lista !== null && (

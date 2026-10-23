@@ -4,6 +4,7 @@ import { useState } from "react";
 import { guardarEnBanco, verificarCalidad } from "@/lib/api";
 import type { Pregunta, Verificacion } from "@/lib/tipos";
 import { Alerta, Boton, Icono, Input, Insignia, Select, Tarjeta, TituloSeccion } from "./ui";
+import { useToast } from "@/components/ui/Toast";
 
 /** Convierte "mm:ss" (o "hh:mm:ss") en segundos; null si no es válido. */
 function aSegundos(marca: string): number | null {
@@ -72,6 +73,7 @@ export function DetalleVerificacion({ v, onSaltar }: { v: Verificacion | null | 
 /** Botón y formulario en línea para guardar una pregunta en el banco institucional. */
 export function GuardarEnBanco({ pregunta, tieneGrupo, onGuardada }: { pregunta: Pregunta; tieneGrupo: boolean; onGuardada?: () => void }) {
   const [abierto, setAbierto] = useState(false);
+  const { avisar } = useToast();
   const [visibilidad, setVisibilidad] = useState<"institucional" | "privada">("institucional");
   const [etiquetas, setEtiquetas] = useState("");
   const [asignatura, setAsignatura] = useState("");
@@ -89,6 +91,7 @@ export function GuardarEnBanco({ pregunta, tieneGrupo, onGuardada }: { pregunta:
         ...(!tieneGrupo && asignatura.trim() ? { asignatura_nombre: asignatura.trim() } : {}),
       });
       setListo(true);
+      avisar("Pregunta guardada en el banco.");
       setAbierto(false);
       onGuardada?.();
     } catch (e) {
@@ -178,7 +181,7 @@ export function PanelCalidad({
         <div className="min-w-0">
           <TituloSeccion nivel={3}>Calidad de las preguntas</TituloSeccion>
           <p className="mt-1 text-sm text-suave">
-            {aRevisar > 0 ? `${aRevisar} pregunta(s) requieren revisión. ` : sinVerificar === preguntas.length ? "" : "Todas las verificadas están respaldadas por el video. "}
+            {aRevisar > 0 ? `${aRevisar} ${aRevisar === 1 ? "pregunta requiere" : "preguntas requieren"} revisión. ` : sinVerificar === preguntas.length ? "" : "Todas las verificadas están respaldadas por el video. "}
             {sinVerificar > 0 && `${sinVerificar} sin verificar.`}
           </p>
         </div>

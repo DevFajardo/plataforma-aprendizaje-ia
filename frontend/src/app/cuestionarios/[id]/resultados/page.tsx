@@ -25,6 +25,7 @@ import { descargarCsv, descargarPdfCuestionario, obtenerResultados } from "@/lib
 import { useRequiereLogin } from "@/lib/auth";
 import { formatearFecha } from "@/lib/fechas";
 import type { GananciaAprendizaje, PreguntaResultado, Resultados, Retencion } from "@/lib/tipos";
+import { conSigno, pct, plural } from "@/lib/formato";
 
 const UMBRAL_REFORZAR = 60; // % de acierto por debajo del cual se sugiere reforzar el tema
 
@@ -65,12 +66,12 @@ function GananciaSeccion({ ganancia }: { ganancia: GananciaAprendizaje }) {
     <Tarjeta as="section">
       <TituloSeccion nivel={3}>Ganancia de aprendizaje</TituloSeccion>
       <p className="mb-4 mt-3 text-sm text-suave">
-        Primer intento (pre-test) frente a último intento (post-test) de los {ganancia.estudiantes} estudiante(s) con 2 o más intentos.
+        Primer intento (pre-test) frente a último intento (post-test) de los {plural(ganancia.estudiantes, "estudiante")} con 2 o más intentos.
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Metrica titulo="Promedio primer intento" valor={`${ganancia.promedio_primer_intento}%`} />
-        <Metrica titulo="Promedio último intento" valor={`${ganancia.promedio_ultimo_intento}%`} />
-        <Metrica className="col-span-2 sm:col-span-1" titulo="Diferencia" valor={`${dif > 0 ? "+" : ""}${dif} puntos`} />
+        <Metrica titulo="Promedio primer intento" valor={`${pct(ganancia.promedio_primer_intento)}`} />
+        <Metrica titulo="Promedio último intento" valor={`${pct(ganancia.promedio_ultimo_intento)}`} />
+        <Metrica className="col-span-2 sm:col-span-1" titulo="Diferencia" valor={`${conSigno(dif)} puntos`} />
       </div>
       <Detalle resumen="Ver detalle por estudiante">
         <ul className="flex flex-col gap-2 text-sm">
@@ -78,8 +79,7 @@ function GananciaSeccion({ ganancia }: { ganancia: GananciaAprendizaje }) {
             <li key={d.email} className="flex flex-col gap-0.5 border-b border-borde pb-2 last:border-0 last:pb-0 sm:flex-row sm:justify-between">
               <span className="font-semibold">{d.nombre}</span>
               <span className="text-suave">
-                {d.primer_porcentaje}% → {d.ultimo_porcentaje}% ({d.diferencia > 0 ? "+" : ""}
-                {d.diferencia} puntos, {d.intentos} intentos)
+                {pct(d.primer_porcentaje)} → {pct(d.ultimo_porcentaje)} ({conSigno(d.diferencia)} puntos, {plural(d.intentos, "intento")})
               </span>
             </li>
           ))}
@@ -108,14 +108,14 @@ function RetencionSeccion({ retencion }: { retencion: Retencion }) {
     <Tarjeta as="section">
       <TituloSeccion nivel={3}>Retención</TituloSeccion>
       <p className="mb-4 mt-3 text-sm text-suave">
-        Intento inicial frente a repaso diferido{dias ? ` (a los ${dias} días)` : ""} de los {retencion.estudiantes} estudiante(s) que hicieron
+        Intento inicial frente a repaso diferido{dias ? ` (a los ${dias} días)` : ""} de los {plural(retencion.estudiantes, "estudiante")} que hicieron
         ambos. Retención = diferido / inicial × 100.
       </p>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Metrica titulo="Promedio inicial" valor={`${retencion.promedio_inicial}%`} />
-        <Metrica titulo="Promedio diferido" valor={`${retencion.promedio_diferido}%`} />
-        <Metrica titulo="Retención" valor={retencion.retencion_pct === null ? "—" : `${retencion.retencion_pct}%`} />
-        <Metrica titulo="Diferencia" valor={`${dif > 0 ? "+" : ""}${dif} puntos`} />
+        <Metrica titulo="Promedio inicial" valor={`${pct(retencion.promedio_inicial)}`} />
+        <Metrica titulo="Promedio diferido" valor={`${pct(retencion.promedio_diferido)}`} />
+        <Metrica titulo="Retención" valor={retencion.retencion_pct === null ? "—" : `${pct(retencion.retencion_pct)}`} />
+        <Metrica titulo="Diferencia" valor={`${conSigno(dif)} puntos`} />
       </div>
       <Detalle resumen="Ver detalle por estudiante">
         <ul className="flex flex-col gap-2 text-sm">
@@ -123,7 +123,7 @@ function RetencionSeccion({ retencion }: { retencion: Retencion }) {
             <li key={d.email} className="flex flex-col gap-0.5 border-b border-borde pb-2 last:border-0 last:pb-0 sm:flex-row sm:justify-between">
               <span className="font-semibold">{d.nombre}</span>
               <span className="text-suave">
-                {d.inicial}% → {d.diferido}% (retención {d.retencion === null ? "—" : `${d.retencion}%`})
+                {pct(d.inicial)} → {pct(d.diferido)} (retención {d.retencion === null ? "—" : `${pct(d.retencion)}`})
               </span>
             </li>
           ))}
@@ -182,13 +182,13 @@ function Contenido() {
 
   return (
     <Pagina ancho="lg">
-      {error && <Alerta tipo="error" className="mb-4">{error}</Alerta>}
+      {error && <Alerta tipo="error" className="mb-4" reintentar>{error}</Alerta>}
       {(cargando || (!datos && !error)) && <EsqueletoPagina />}
 
       {datos && (
         <>
           <EncabezadoPagina
-            atras={{ href: `/cuestionarios/${id}`, texto: "Volver al cuestionario" }}
+            migas={[{ texto: "Mis cuestionarios", href: "/cuestionarios" }, { texto: datos.titulo, href: `/cuestionarios/${id}` }, { texto: "Resultados" }]}
             titulo={`Resultados: ${datos.titulo}`}
             etiquetas={datos.modo === "control" ? <Insignia tono="neutro">Grupo control</Insignia> : undefined}
             acciones={
@@ -219,7 +219,7 @@ function Contenido() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
               <Metrica icono="intentos" titulo="Intentos finalizados" valor={String(datos.total_intentos)} />
               <Metrica icono="grupo" titulo="Estudiantes" valor={String(datos.estudiantes_unicos)} />
-              <Metrica className="col-span-2 sm:col-span-1" icono="promedio" titulo="Promedio" valor={`${datos.promedio_porcentaje}%`} />
+              <Metrica className="col-span-2 sm:col-span-1" icono="promedio" titulo="Promedio" valor={`${pct(datos.promedio_porcentaje)}`} />
             </div>
 
             {datos.total_intentos === 0 ? (
@@ -234,7 +234,7 @@ function Contenido() {
                     <ul className="list-disc space-y-1.5 pl-5 text-sm">
                       {aReforzar.map((p) => (
                         <li key={p.pregunta_id}>
-                          {p.enunciado} <strong>({p.porcentaje_acierto}% de acierto)</strong>
+                          {p.enunciado} <strong>({pct(p.porcentaje_acierto)} de acierto)</strong>
                         </li>
                       ))}
                     </ul>
@@ -252,19 +252,19 @@ function Contenido() {
                   <Tarjeta>
                     <ul className="flex flex-col gap-5">
                       {cerradas.map((p) => {
-                        const pct = p.porcentaje_acierto ?? 0;
-                        const reforzar = p.num_respuestas > 0 && pct < UMBRAL_REFORZAR;
+                        const acierto = p.porcentaje_acierto ?? 0;
+                        const reforzar = p.num_respuestas > 0 && acierto < UMBRAL_REFORZAR;
                         return (
                           <li key={p.pregunta_id}>
                             <p className="mb-2 text-sm font-semibold">
                               {p.orden + 1}. {p.enunciado}
                             </p>
                             <div className="flex items-center gap-3">
-                              <BarraPorcentaje valor={pct} etiqueta={`Acierto de la pregunta ${p.orden + 1}`} tono={tonoBarra(pct)} alto="lg" className="flex-1" />
-                              <span className="w-12 shrink-0 text-right text-sm font-bold">{pct}%</span>
+                              <BarraPorcentaje valor={acierto} etiqueta={`Acierto de la pregunta ${p.orden + 1}`} tono={tonoBarra(acierto)} alto="lg" className="flex-1" />
+                              <span className="w-12 shrink-0 text-right text-sm font-bold">{pct(acierto)}</span>
                             </div>
                             <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-suave">
-                              {p.num_respuestas} respuestas
+                              {plural(p.num_respuestas, "respuesta")}
                               {reforzar && (
                                 <Insignia tono="error">
                                   <Icono nombre="alerta" tamano={12} /> Reforzar
@@ -290,7 +290,7 @@ function Contenido() {
                         <details key={p.pregunta_id} className="group rounded-xl border border-borde bg-superficie shadow-tarjeta">
                           <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-semibold [&::-webkit-details-marker]:hidden">
                             <span>
-                              {p.orden + 1}. {p.enunciado} ({p.num_respuestas} respuestas)
+                              {p.orden + 1}. {p.enunciado} ({plural(p.num_respuestas, "respuesta")})
                             </span>
                             <Icono nombre="chevron" className="transition group-open:rotate-180" />
                           </summary>
@@ -313,7 +313,7 @@ function Contenido() {
                               <p className="font-bold">{i.nombre}</p>
                               <p className="text-xs text-suave">{i.email}</p>
                             </div>
-                            <span className="shrink-0 text-xl font-extrabold">{i.porcentaje}%</span>
+                            <span className="shrink-0 text-xl font-extrabold">{pct(i.porcentaje)}</span>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-sm text-suave">
                             <Insignia>{etiquetaTipo(i.tipo)}</Insignia>
@@ -327,7 +327,7 @@ function Contenido() {
                     ))}
                   </ul>
                   {/* Tablet y escritorio: tabla */}
-                  <div className="hidden overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-tarjeta md:block">
+                  <div tabIndex={0} role="region" aria-label="Intentos del cuestionario" className="hidden overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-tarjeta md:block">
                     <table className="w-full text-left text-sm">
                       <thead className="bg-superficie-2">
                         <tr>
@@ -347,7 +347,7 @@ function Contenido() {
                             <td className="px-3 py-2.5">
                               {i.puntaje}/{i.total}
                             </td>
-                            <td className="px-3 py-2.5 font-bold">{i.porcentaje}%</td>
+                            <td className="px-3 py-2.5 font-bold">{pct(i.porcentaje)}</td>
                             <td className="px-3 py-2.5">{etiquetaTipo(i.tipo)}</td>
                             <td className="whitespace-nowrap px-3 py-2.5">{formatearFecha(i.fecha)}</td>
                           </tr>

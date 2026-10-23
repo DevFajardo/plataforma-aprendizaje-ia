@@ -19,6 +19,8 @@ import {
 import { agregarDesdeBanco, buscarBanco, editarBanco, eliminarDelBanco, filtrosBanco, listarCuestionarios } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import { NIVELES_BLOOM, type CuestionarioResumen, type FiltrosBanco, type PaginaBanco, type PreguntaBanco } from "@/lib/tipos";
+import { pct, plural } from "@/lib/formato";
+import { useToast } from "@/components/ui/Toast";
 
 const TIPOS: Record<string, string> = { opcion_multiple: "Opción múltiple", verdadero_falso: "Verdadero / Falso", abierta: "Abierta" };
 const mayus = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -36,6 +38,7 @@ function TarjetaPregunta({
   onCambio: () => void;
   onError: (m: string) => void;
 }) {
+  const { avisar } = useToast();
   const [destino, setDestino] = useState("");
   const [agregando, setAgregando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -67,6 +70,7 @@ function TarjetaPregunta({
   async function eliminar() {
     try {
       await eliminarDelBanco(p.id);
+      avisar("Pregunta eliminada del banco.");
       onCambio();
     } catch (e) {
       onError(e instanceof Error ? e.message : "Error desconocido");
@@ -122,8 +126,8 @@ function TarjetaPregunta({
       <p className="text-xs text-suave">
         Autor: {p.autor}
         {p.estadisticas &&
-          ` · Usada en ${p.estadisticas.usos} cuestionario(s) · ${p.estadisticas.respuestas} respuesta(s)` +
-            (p.estadisticas.porcentaje_acierto !== null ? ` · ${String(p.estadisticas.porcentaje_acierto).replace(".", ",")} % de acierto` : "")}
+          ` · Usada en ${plural(p.estadisticas.usos, "cuestionario")} · ${plural(p.estadisticas.respuestas, "respuesta")}` +
+            (p.estadisticas.porcentaje_acierto !== null ? ` · ${pct(p.estadisticas.porcentaje_acierto)} de acierto` : "")}
       </p>
 
       {aviso && <Alerta tipo="exito">{aviso}</Alerta>}
@@ -305,7 +309,7 @@ export default function BancoPage() {
       {datos && datos.items.length > 0 && (
         <>
           <p className="mb-3 text-sm text-suave" role="status">
-            {datos.total} pregunta(s)
+            {plural(datos.total, "pregunta")}
           </p>
           <div className="flex flex-col gap-4">
             {datos.items.map((p) => (

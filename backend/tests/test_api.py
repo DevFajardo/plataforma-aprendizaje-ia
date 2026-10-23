@@ -247,7 +247,7 @@ def test_estadisticas_vacias(cliente, estudiante):
 # ---------- Encuesta SUS ----------
 
 def test_sus_responder_actualizar_y_mia(cliente, estudiante):
-    assert cliente.get("/api/sus/mia", headers=estudiante).status_code == 404
+    assert cliente.get("/api/sus/mia", headers=estudiante).json() is None
     r = cliente.post("/api/sus", json={"respuestas": [3] * 10, "comentario": "  Bien  "}, headers=estudiante)
     assert r.status_code == 200 and r.json()["puntaje"] == 50 and r.json()["interpretacion"] == "Pobre"
     assert r.json()["comentario"] == "Bien"

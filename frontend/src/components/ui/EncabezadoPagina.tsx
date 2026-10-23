@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import Icono from "./Icono";
+import Migas, { type Miga } from "./Migas";
 
 interface Props {
   titulo: ReactNode;
@@ -8,15 +9,18 @@ interface Props {
   acciones?: ReactNode;
   /** Enlace «volver» sobre el título. */
   atras?: { href: string; texto: string };
+  /** Migas de pan (tienen prioridad sobre `atras`). */
+  migas?: Miga[];
   /** Insignias u otros elementos junto al título. */
   etiquetas?: ReactNode;
 }
 
 /** Título de página con franja naranja de marca, descripción y acciones. */
-export default function EncabezadoPagina({ titulo, descripcion, acciones, atras, etiquetas }: Props) {
+export default function EncabezadoPagina({ titulo, descripcion, acciones, atras, migas, etiquetas }: Props) {
   return (
     <header className="mb-6 sm:mb-8">
-      {atras && (
+      {migas && <Migas items={migas} />}
+      {!migas && atras && (
         <Link href={atras.href} className="mb-3 inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-enlace hover:underline">
           <Icono nombre="atras" tamano={16} />
           {atras.texto}

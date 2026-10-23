@@ -9,6 +9,7 @@ import PanelTranscripcion from "./PanelTranscripcion";
 import PreguntaCard from "./PreguntaCard";
 import TutorChat from "./TutorChat";
 import { Alerta, BarraPorcentaje, Boton, EncabezadoPagina, Icono, Insignia, Pestanas, Tarjeta, TituloSeccion, cx } from "./ui";
+import { pct, plural } from "@/lib/formato";
 
 /** Convierte "mm:ss" (o "hh:mm:ss") en segundos; null si no es válido. */
 function aSegundos(marca: string): number | null {
@@ -50,7 +51,7 @@ function AnilloPuntaje({ porcentaje }: { porcentaje: number }) {
           className={cx("transition-[stroke-dashoffset] duration-700", tono)}
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-3xl font-extrabold">{porcentaje}%</span>
+      <span className="absolute inset-0 flex items-center justify-center text-3xl font-extrabold">{pct(porcentaje)}</span>
     </div>
   );
 }
@@ -73,6 +74,8 @@ export default function VisorCuestionario({
   onRecargar?: () => void;
 }) {
   const [srcVideo, setSrcVideo] = useState(urlReproductor(c));
+  // YouTube: se muestra una portada y el reproductor (pesado, de terceros) solo se carga al pulsar «Reproducir».
+  const [reproduciendo, setReproduciendo] = useState(false);
   const videoRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLVideoElement & HTMLAudioElement>(null);
   const esArchivo = (c.medio === "video" || c.medio === "audio") && c.archivo_url !== null;
@@ -127,6 +130,7 @@ export default function VisorCuestionario({
       return;
     }
     setSrcVideo(urlReproductor(c, segundos));
+    setReproduciendo(true);
     videoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
@@ -169,12 +173,12 @@ export default function VisorCuestionario({
   return (
     <div className="flex flex-col gap-6">
       <EncabezadoPagina
-        atras={{ href: "/cuestionarios", texto: "Mis cuestionarios" }}
+        migas={[{ texto: "Mis cuestionarios", href: "/cuestionarios" }, { texto: c.titulo }]}
         titulo={c.titulo}
         etiquetas={
           <>
             {c.modo === "control" && <Insignia tono="neutro">Grupo control</Insignia>}
-            <Insignia tono="azul">{c.preguntas.length} preguntas</Insignia>
+            <Insignia tono="azul">{plural(c.preguntas.length, "pregunta")}</Insignia>
             <Insignia>{formatearFecha(c.creado_en, "corta")}</Insignia>
           </>
         }
@@ -213,14 +217,35 @@ export default function VisorCuestionario({
 
           {esIncrustado && (c.youtube_id || c.video_externo_id) && (
             <div ref={videoRef} className="aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-black shadow-tarjeta">
-              <iframe
-                key={srcVideo}
-                src={srcVideo}
-                title={c.medio === "vimeo" ? "Video de Vimeo" : "Video de YouTube"}
-                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                allowFullScreen
-                className="h-full w-full"
-              />
+              {c.medio === "youtube" && !reproduciendo ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSrcVideo(urlReproductor(c, 0));
+                    setReproduciendo(true);
+                  }}
+                  aria-label={`Reproducir el video: ${c.titulo}`}
+                  className="group relative block h-full w-full overflow-hidden"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`https://i.ytimg.com/vi/${c.youtube_id}/hqdefault.jpg`} alt="" loading="lazy" className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-cul-naranja text-cul-azul-oscuro shadow-lg transition group-hover:scale-105">
+                      <Icono nombre="play" tamano={30} />
+                    </span>
+                  </span>
+                </button>
+              ) : (
+                <iframe
+                  key={srcVideo}
+                  src={srcVideo}
+                  title={c.medio === "vimeo" ? "Video de Vimeo" : "Video de YouTube"}
+                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                  allowFullScreen
+                  loading="lazy"
+                  className="h-full w-full"
+                />
+              )}
             </div>
           )}
 
@@ -239,11 +264,11 @@ export default function VisorCuestionario({
                 {panelIzq === "resumen" && (
                   <div className="flex flex-col gap-5">
                     <section>
-                      <TituloSeccion nivel={3}>Resumen</TituloSeccion>
+                      <TituloSeccion nivel={2} visual={3}>Resumen</TituloSeccion>
                       <p className="mt-3 whitespace-pre-line leading-relaxed text-suave">{c.resumen}</p>
                     </section>
                     <section>
-                      <TituloSeccion nivel={3}>Ideas clave</TituloSeccion>
+                      <TituloSeccion nivel={2} visual={3}>Ideas clave</TituloSeccion>
                       <ul className="mt-3 flex flex-col gap-2">
                         {c.ideas_clave.map((idea, i) => (
                           <li key={i} className="flex items-start gap-3 text-suave">
@@ -297,7 +322,7 @@ export default function VisorCuestionario({
                   <Icono nombre="trofeo" tamano={22} />
                 </span>
                 <p className="text-suave">
-                  <strong className="text-texto">{c.preguntas.length} preguntas.</strong> Tus respuestas se califican en el servidor y quedan en tu
+                  <strong className="text-texto">{plural(c.preguntas.length, "pregunta")}.</strong> Tus respuestas se califican en el servidor y quedan en tu
                   historial.
                 </p>
               </div>
@@ -347,7 +372,7 @@ export default function VisorCuestionario({
                   <div className="min-w-0">
                     <p className="text-sm font-semibold uppercase tracking-wide text-suave">Resultado</p>
                     <p className="text-2xl font-extrabold">
-                      Puntaje: {resumen.puntaje} de {resumen.total} ({resumen.porcentaje}%)
+                      Puntaje: {resumen.puntaje} de {resumen.total} ({pct(resumen.porcentaje)})
                     </p>
                     {c.preguntas.length > resumen.total && (
                       <p className="text-sm text-suave">(las preguntas abiertas cuentan cuando tu docente aprueba su nota)</p>

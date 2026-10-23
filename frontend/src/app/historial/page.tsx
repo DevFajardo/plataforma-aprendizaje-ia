@@ -6,6 +6,7 @@ import { listarIntentos } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import { formatearFecha } from "@/lib/fechas";
 import type { IntentoHistorial } from "@/lib/tipos";
+import { pct } from "@/lib/formato";
 
 const tonoPorcentaje = (p: number): TonoBarra => (p < 60 ? "error" : p < 80 ? "aviso" : "exito");
 
@@ -32,7 +33,7 @@ export default function HistorialPage() {
   return (
     <Pagina>
       <EncabezadoPagina titulo="Historial de intentos" descripcion="Todos los cuestionarios que has respondido, del más reciente al más antiguo." />
-      {error && <Alerta tipo="error">{error}</Alerta>}
+      {error && <Alerta tipo="error" reintentar>{error}</Alerta>}
       {intentos === null && !error && <EsqueletoPagina tarjetas={2} />}
       {intentos?.length === 0 && (
         <EstadoVacio
@@ -58,7 +59,7 @@ export default function HistorialPage() {
                     <Enlace href={`/cuestionarios/${i.cuestionario_id}`} className="min-w-0">
                       {i.cuestionario_titulo}
                     </Enlace>
-                    <span className="shrink-0 text-xl font-bold">{i.porcentaje}%</span>
+                    <span className="shrink-0 text-xl font-bold">{pct(i.porcentaje)}</span>
                   </div>
                   <BarraPorcentaje valor={i.porcentaje} etiqueta={`Resultado del ${formatearFecha(i.creado_en)}`} tono={tonoPorcentaje(i.porcentaje)} />
                   <p className="flex flex-wrap justify-between gap-2 text-sm text-suave">
@@ -73,7 +74,7 @@ export default function HistorialPage() {
           </ul>
 
           {/* Tablet y escritorio: tabla */}
-          <div className="hidden overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-tarjeta md:block">
+          <div tabIndex={0} role="region" aria-label="Historial de intentos" className="hidden overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-tarjeta md:block">
             <table className="w-full text-left text-sm">
               <thead className="bg-superficie-2">
                 <tr>
@@ -102,7 +103,7 @@ export default function HistorialPage() {
                           alto="sm"
                           className="w-24"
                         />
-                        <span className="font-bold">{i.porcentaje}%</span>
+                        <span className="font-bold">{pct(i.porcentaje)}</span>
                       </div>
                     </td>
                   </tr>

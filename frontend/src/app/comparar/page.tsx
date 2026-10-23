@@ -6,6 +6,7 @@ import { Alerta, BarraPorcentaje, Boton, EncabezadoPagina, EsqueletoPagina, Icon
 import { compararGrupos, descargarCsvComparar, listarCuestionarios } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import type { Comparacion, CuestionarioResumen, Efecto, GrupoComparacion, MetricaGrupo } from "@/lib/tipos";
+import { num, pct } from "@/lib/formato";
 
 type Metrica = "inicial" | "diferido" | "retencion";
 
@@ -15,7 +16,6 @@ const ETIQUETAS: Record<Metrica, string> = {
   retencion: "Retención (%)",
 };
 
-const num = (v: number | null) => (v === null ? "—" : String(v).replace(".", ","));
 
 function Barras({ datos, metrica }: { datos: Comparacion; metrica: Metrica }) {
   const grupos: [string, GrupoComparacion, "primario" | "aviso"][] = [
@@ -35,7 +35,7 @@ function Barras({ datos, metrica }: { datos: Comparacion; metrica: Metrica }) {
                 <span className="font-semibold">
                   Grupo {letra} ({g.modo === "control" ? "control" : "aprendizaje"})
                 </span>
-                <span className="font-bold">{m === null ? "sin datos" : `${num(m)}%`}</span>
+                <span className="font-bold">{m === null ? "sin datos" : pct(m)}</span>
               </div>
               <BarraPorcentaje
                 valor={m ?? 0}
@@ -161,7 +161,7 @@ function Contenido() {
   return (
     <Pagina ancho="lg">
       <EncabezadoPagina
-        atras={{ href: "/panel", texto: "Volver al panel" }}
+        migas={[{ texto: "Panel", href: "/panel" }, { texto: "Comparar grupos" }]}
         titulo="Comparar grupos"
         descripcion="Elige dos de tus cuestionarios (por ejemplo, el original y su versión grupo control) para comparar el intento inicial, el repaso diferido y la retención."
       />
@@ -207,7 +207,7 @@ function Contenido() {
               <TarjetaMedida nombre="Retención" a={datos.a.retencion} b={datos.b.retencion} efecto={datos.efecto_retencion} />
             </div>
             {/* Tablet y escritorio: tabla con desplazamiento contenido */}
-            <div className="hidden overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-tarjeta lg:block">
+            <div tabIndex={0} role="region" aria-label="Comparación de grupos" className="hidden overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-tarjeta lg:block">
               <table className="w-full text-sm">
                 <caption className="sr-only">Comparación de medidas entre el grupo A y el grupo B</caption>
                 <thead className="bg-superficie-2 text-left">

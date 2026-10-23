@@ -21,6 +21,7 @@ import { descargarPdfRa, obtenerCoordinacion } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import { formatearFecha } from "@/lib/fechas";
 import type { Coordinacion } from "@/lib/tipos";
+import { plural } from "@/lib/formato";
 
 const ETIQUETA_BLOOM: Record<string, string> = {
   recordar: "Recordar",
@@ -95,7 +96,7 @@ export default function CoordinacionPage() {
         }
       />
 
-      {error && <Alerta tipo="error" className="mb-4">{error}</Alerta>}
+      {error && <Alerta tipo="error" className="mb-4" reintentar>{error}</Alerta>}
       {!datos && !error && <EsqueletoPagina />}
 
       {datos && (
@@ -151,7 +152,7 @@ export default function CoordinacionPage() {
                       <strong className="text-enlace">{r.codigo}</strong> · {r.descripcion}
                       {usuario.rol === "admin" && !programaId && <span className="block text-xs text-suave">{r.programa}</span>}
                     </p>
-                    <FilaLogro etiqueta={r.codigo} logro={r.logro} semaforo={r.semaforo} detalle={`${r.respuestas} respuestas · ${r.estudiantes} estudiantes evaluados`} />
+                    <FilaLogro etiqueta={r.codigo} logro={r.logro} semaforo={r.semaforo} detalle={`${plural(r.respuestas, "respuesta")} · ${plural(r.estudiantes, "estudiante")} evaluados`} />
                   </Tarjeta>
                 ))}
               </div>
@@ -169,7 +170,7 @@ export default function CoordinacionPage() {
                   </div>
                   <BarraPorcentaje valor={b.logro ?? 0} etiqueta={`Logro en nivel ${b.nivel}`} />
                   <span className="text-xs text-suave">
-                    {b.preguntas} preguntas · {b.respuestas} respuestas
+                    {plural(b.preguntas, "pregunta")} · {plural(b.respuestas, "respuesta")}
                   </span>
                 </div>
               ))}
@@ -188,7 +189,7 @@ export default function CoordinacionPage() {
                       etiqueta={`${a.codigo} · ${a.nombre}`}
                       logro={a.logro}
                       semaforo={a.semaforo}
-                      detalle={`${a.respuestas} respuestas · ${a.estudiantes} estudiantes`}
+                      detalle={`${plural(a.respuestas, "respuesta")} · ${plural(a.estudiantes, "estudiante")}`}
                     />
                     {a.grupos.length > 0 && (
                       <ul className="flex flex-col gap-3 border-t border-borde pt-3">
@@ -198,7 +199,7 @@ export default function CoordinacionPage() {
                               etiqueta={`${g.nombre} (${g.periodo}) · ${g.docente}`}
                               logro={g.logro}
                               semaforo={g.semaforo}
-                              detalle={`${g.respuestas} respuestas · ${g.estudiantes} estudiantes`}
+                              detalle={`${plural(g.respuestas, "respuesta")} · ${plural(g.estudiantes, "estudiante")}`}
                             />
                           </li>
                         ))}
@@ -221,7 +222,7 @@ export default function CoordinacionPage() {
                     <li key={t.semana} className="grid grid-cols-[6.5rem_1fr_3.5rem] items-center gap-3 text-sm">
                       <span className="text-suave">Sem. {formatearFecha(`${t.semana}T12:00:00`, "corta")}</span>
                       <BarraPorcentaje valor={t.logro} etiqueta={`Logro de la semana del ${t.semana}`} alto="sm" />
-                      <span className="text-right font-semibold tabular-nums" title={`${t.respuestas} respuestas`}>
+                      <span className="text-right font-semibold tabular-nums" title={`${plural(t.respuestas, "respuesta")}`}>
                         {pct(t.logro)}
                       </span>
                     </li>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false },
   title: "Banco de preguntas",
   description: "Banco de preguntas institucional: busca y reutiliza preguntas por resultado de aprendizaje, nivel de Bloom y asignatura.",
 };

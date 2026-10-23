@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false },
   title: "Comparar grupos",
   description: "Compara dos cuestionarios o grupos: desempeño inicial, retención diferida y tamaño del efecto.",
 };

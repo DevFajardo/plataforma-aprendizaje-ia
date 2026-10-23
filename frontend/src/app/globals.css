@@ -233,3 +233,14 @@ h1, h2, h3, p, li, dd, dt, label, summary, a {
   scrollbar-width: thin;
   scrollbar-color: var(--borde-fuerte) transparent;
 }
+
+/* Inicio: con un token guardado se evita el parpadeo de la página pública mientras se valida la sesión */
+.sesion-esqueleto {
+  display: none;
+}
+html[data-sesion] .sesion-oculta {
+  display: none;
+}
+html[data-sesion] .sesion-esqueleto {
+  display: block;
+}

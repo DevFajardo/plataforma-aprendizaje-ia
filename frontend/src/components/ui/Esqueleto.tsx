@@ -8,7 +8,7 @@ export default function Esqueleto({ className }: { className?: string }) {
 /** Esqueleto genérico de una página (título + tarjetas). Anuncia «Cargando» a lectores de pantalla. */
 export function EsqueletoPagina({ tarjetas = 3 }: { tarjetas?: number }) {
   return (
-    <div role="status" aria-live="polite" className="flex flex-col gap-6">
+    <div role="status" aria-live="polite" className="flex min-h-[90svh] flex-col gap-6">
       <span className="sr-only">Cargando…</span>
       <div className="flex flex-col gap-3">
         <Esqueleto className="h-8 w-2/3 max-w-sm" />

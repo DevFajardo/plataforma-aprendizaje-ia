@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function PrivacidadPage() {
   return (
     <Pagina ancho="lg">
-      <EncabezadoPagina titulo="Política de tratamiento de datos personales" />
+      <EncabezadoPagina migas={[{ texto: "Inicio", href: "/" }, { texto: "Privacidad" }]} titulo="Política de tratamiento de datos personales" />
       <Alerta tipo="advertencia" titulo="Aviso" className="mb-6">
         Esta plataforma es un <strong>proyecto académico universitario</strong>, no un servicio comercial. Esta política describe cómo se tratan los
         datos personales dentro de ese proyecto, en cumplimiento de la Ley Estatutaria 1581 de 2012 y del Decreto 1377 de 2013 de la República de
@@ -23,7 +23,7 @@ export default function PrivacidadPage() {
           <p>
             El responsable del tratamiento es el equipo estudiantil que desarrolla el proyecto académico «Plataforma de
             Aprendizaje Activo con IA», en el marco de una asignatura universitaria. No existe una persona jurídica
-            comercial detrás de la plataforma. Para cualquier solicitud relacionada con sus datos puede escribir a:{" "}
+            comercial detrás de la plataforma. Para cualquier solicitud relacionada con tus datos puedes escribir a:{" "}
             <strong>[correo del responsable]</strong>.
           </p>
         </section>
@@ -32,16 +32,16 @@ export default function PrivacidadPage() {
           <TituloSeccion className="mb-3">2. Finalidad del tratamiento</TituloSeccion>
           <p className="mb-2">Los datos personales se tratan exclusivamente con fines académicos y de investigación educativa:</p>
           <ul className="list-disc space-y-1 pl-6">
-            <li>Crear y administrar su cuenta, y permitirle usar las funciones de la plataforma (generar, responder y compartir cuestionarios).</li>
-            <li>Calificar sus intentos, mostrarle su progreso y programar repasos diferidos.</li>
+            <li>Crear y administrar tu cuenta y permitirte usar las funciones de la plataforma (generar, responder y compartir cuestionarios).</li>
+            <li>Calificar tus intentos, mostrarte tu progreso y programar repasos diferidos.</li>
             <li>Permitir que el docente creador de un cuestionario vea los resultados de los estudiantes que lo responden.</li>
             <li>
               Evaluar la usabilidad y la efectividad de la plataforma (encuesta de usabilidad SUS, comparación de la
-              retención entre grupos), <strong>solo si usted lo autoriza</strong> de forma expresa y, en ese caso, con
+              retención entre grupos), <strong>solo si tú lo autorizas</strong> de forma expresa y, en ese caso, con
               datos anonimizados en los reportes y exportaciones.
             </li>
           </ul>
-          <p className="mt-2">No se usan sus datos para publicidad, perfilamiento comercial ni se venden a terceros.</p>
+          <p className="mt-2">No se usan tus datos para publicidad, perfilamiento comercial ni se venden a terceros.</p>
         </section>
 
         <section>
@@ -49,10 +49,10 @@ export default function PrivacidadPage() {
           <ul className="list-disc space-y-1 pl-6">
             <li>Datos de la cuenta: nombre, correo electrónico, rol (estudiante o docente) y contraseña (almacenada solo como un resumen cifrado, nunca en texto legible).</li>
             <li>Datos de uso académico: cuestionarios generados, intentos, respuestas, puntajes, repasos programados y fechas.</li>
-            <li>Respuestas de la encuesta de usabilidad SUS y su comentario opcional.</li>
-            <li>Para docentes: tiempo activo de edición de sus cuestionarios y, de forma opcional, su estimación del tiempo que tomaría crearlos manualmente.</li>
-            <li>Videos o archivos de audio que usted decida subir, y la transcripción generada a partir de ellos.</li>
-            <li>Sus decisiones de consentimiento y la fecha en que las registró.</li>
+            <li>Respuestas de la encuesta de usabilidad SUS y tu comentario opcional.</li>
+            <li>Para docentes: tiempo activo de edición de tus cuestionarios y, de forma opcional, tu estimación del tiempo que tomaría crearlos manualmente.</li>
+            <li>Videos o archivos de audio que decidas subir, y la transcripción generada a partir de ellos.</li>
+            <li>Tus decisiones de consentimiento y la fecha en que las registraste.</li>
           </ul>
           <p className="mt-2">No se recolectan datos sensibles ni datos de menores de edad de manera intencional.</p>
         </section>
@@ -64,24 +64,24 @@ export default function PrivacidadPage() {
             a servicios de inteligencia artificial de terceros: <strong>Google Gemini</strong> y <strong>Groq</strong> (que
             también se usa para transcribir audio con Whisper). Estos proveedores operan en el exterior y su{" "}
             <strong>plan gratuito puede utilizar los datos enviados para mejorar sus propios servicios</strong>. Por esta
-            razón, <strong>no suba videos ni audios que contengan datos personales, información confidencial o sensible</strong>{" "}
+            razón, <strong>no subas videos ni audios que contengan datos personales, información confidencial o sensible</strong>{" "}
             (por ejemplo, grabaciones de clases con nombres, voces o datos de otras personas sin su autorización). Al subir
-            un contenido usted declara que tiene derecho a usarlo y que no incluye ese tipo de información.
+            un contenido declaras que tienes derecho a usarlo y que no incluye ese tipo de información.
           </p>
         </section>
 
         <section>
           <TituloSeccion className="mb-3">5. Derechos del titular (hábeas data)</TituloSeccion>
-          <p className="mb-2">De acuerdo con la Ley 1581 de 2012, usted tiene derecho a:</p>
+          <p className="mb-2">De acuerdo con la Ley 1581 de 2012, tienes derecho a:</p>
           <ul className="list-disc space-y-1 pl-6">
-            <li><strong>Conocer</strong> los datos que se tienen sobre usted: en «Mi cuenta» puede usar «Descargar mis datos».</li>
-            <li><strong>Actualizar y rectificar</strong> sus datos: puede cambiar su nombre y su contraseña en «Mi cuenta».</li>
-            <li><strong>Suprimir</strong> sus datos y revocar la autorización: la opción «Eliminar mi cuenta» borra de forma definitiva su cuenta, intentos, repasos, encuesta, tareas, los cuestionarios que usted creó (con sus preguntas) y los archivos que subió.</li>
+            <li><strong>Conocer</strong> los datos que se tienen sobre ti: en «Mi cuenta» puedes usar «Descargar mis datos».</li>
+            <li><strong>Actualizar y rectificar</strong> tus datos: puedes cambiar tu nombre y tu contraseña en «Mi cuenta».</li>
+            <li><strong>Suprimir</strong> tus datos y revocar la autorización: la opción «Eliminar mi cuenta» borra de forma definitiva tu cuenta, intentos, repasos, encuesta, tareas, los cuestionarios que creaste (con sus preguntas) y los archivos que subiste.</li>
             <li><strong>Revocar</strong> en cualquier momento el consentimiento de participación en el estudio, sin que ello afecte el uso de la plataforma.</li>
-            <li>Ser informado, previa solicitud, sobre el uso que se ha dado a sus datos, y presentar quejas ante la Superintendencia de Industria y Comercio.</li>
+            <li>Ser informado, previa solicitud, sobre el uso que se ha dado a tus datos, y presentar quejas ante la Superintendencia de Industria y Comercio.</li>
           </ul>
           <p className="mt-2">
-            También puede ejercer estos derechos escribiendo a <strong>[correo del responsable]</strong>.
+            También puedes ejercer estos derechos escribiendo a <strong>[correo del responsable]</strong>.
           </p>
         </section>
 
@@ -89,7 +89,7 @@ export default function PrivacidadPage() {
           <TituloSeccion className="mb-3">6. Consentimiento</TituloSeccion>
           <p>
             Para crear una cuenta es obligatorio aceptar esta política. La participación en el estudio de evaluación es{" "}
-            <strong>voluntaria</strong>: si usted no la autoriza, podrá usar la plataforma con normalidad y sus resultados
+            <strong>voluntaria</strong>: si no la autorizas, podrás usar la plataforma con normalidad y tus resultados
             no se incluirán en las exportaciones con fines de investigación. Los docentes pueden ver los resultados de sus
             propios cursos independientemente de esta autorización, porque forman parte de la función docente.
           </p>
@@ -99,7 +99,7 @@ export default function PrivacidadPage() {
           <TituloSeccion className="mb-3">7. Seguridad y conservación</TituloSeccion>
           <p>
             Las contraseñas se almacenan cifradas, las sesiones usan tokens firmados con expiración y cada recurso
-            comprueba que quien lo consulta tenga permiso. Los datos se conservan mientras su cuenta exista o hasta que
+            comprueba que quien lo consulta tenga permiso. Los datos se conservan mientras tu cuenta exista o hasta que
             el proyecto académico concluya; al terminar el proyecto, la base de datos se eliminará o se anonimizará. Dado
             su carácter académico y el uso de planes gratuitos, no se garantiza disponibilidad continua del servicio.
           </p>

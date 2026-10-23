@@ -17,3 +17,5 @@ export { default as Tarjeta } from "./Tarjeta";
 export { default as TituloSeccion } from "./TituloSeccion";
 export { cx } from "./cx";
 export { default as Enlace, CLASE_ENLACE } from "./Enlace";
+export { default as Migas, type Miga } from "./Migas";
+export { ProveedorToast, useToast, type TipoToast } from "./Toast";

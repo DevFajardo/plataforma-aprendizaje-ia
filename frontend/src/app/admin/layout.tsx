@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false },
   title: "Administración",
   description: "Administra facultades, programas, asignaturas, resultados de aprendizaje y roles de usuario.",
 };

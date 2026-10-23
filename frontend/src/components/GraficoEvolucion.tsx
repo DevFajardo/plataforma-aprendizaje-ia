@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { formatearFecha } from "@/lib/fechas";
 import type { PuntoEvolucion } from "@/lib/tipos";
+import { pct } from "@/lib/formato";
 
 // Gráfico de línea hecho a mano con SVG (sin librerías). Eje Y fijo 0-100 %.
 // El viewBox se ajusta al ancho real del contenedor para que los textos se mantengan legibles en móvil.
@@ -46,7 +47,7 @@ export default function GraficoEvolucion({ puntos }: { puntos: PuntoEvolucion[] 
   const nEtiquetas = Math.min(puntos.length, maxEtiquetas);
   const indicesX = Array.from(new Set(Array.from({ length: nEtiquetas }, (_, k) => (nEtiquetas === 1 ? 0 : Math.round((k * (puntos.length - 1)) / (nEtiquetas - 1))))));
 
-  const resumen = `Gráfico de línea con la evolución de tus ${puntos.length} últimos intentos, del ${puntos[0].porcentaje}% al ${puntos[puntos.length - 1].porcentaje}%.`;
+  const resumen = `Gráfico de línea con la evolución de tus ${puntos.length} últimos intentos, del ${pct(puntos[0].porcentaje)} al ${pct(puntos[puntos.length - 1].porcentaje)}.`;
 
   // El globo de detalle se mantiene dentro del gráfico
   const izq = activo !== null ? Math.min(Math.max(x(activo), 80), ancho - 80) : 0;
@@ -59,7 +60,7 @@ export default function GraficoEvolucion({ puntos }: { puntos: PuntoEvolucion[] 
           <g key={m}>
             <line x1={M.izq} x2={ancho - M.der} y1={y(m)} y2={y(m)} className="stroke-borde" strokeWidth={1} />
             <text x={M.izq - 8} y={y(m) + 4} textAnchor="end" className="fill-suave text-[11px]">
-              {m}%
+              {pct(m)}
             </text>
           </g>
         ))}
@@ -84,7 +85,7 @@ export default function GraficoEvolucion({ puntos }: { puntos: PuntoEvolucion[] 
               fill="transparent"
               tabIndex={0}
               role="img"
-              aria-label={`${formatearFecha(p.fecha)}: ${p.porcentaje}%`}
+              aria-label={`${formatearFecha(p.fecha)}: ${pct(p.porcentaje)}`}
               onMouseEnter={() => setActivo(i)}
               onFocus={() => setActivo(i)}
               onBlur={() => setActivo(null)}
@@ -112,7 +113,7 @@ export default function GraficoEvolucion({ puntos }: { puntos: PuntoEvolucion[] 
             marginTop: -12,
           }}
         >
-          <div className="text-sm font-bold">{sel.porcentaje}%</div>
+          <div className="text-sm font-bold">{pct(sel.porcentaje)}</div>
           <div className="text-suave">{formatearFecha(sel.fecha)}</div>
           {sel.cuestionario_titulo && <div className="max-w-48 truncate text-suave">{sel.cuestionario_titulo}</div>}
         </div>
