@@ -76,65 +76,70 @@ def _usuario(db, nombre: str, email: str, rol: str) -> Usuario:
     return u
 
 
+def sembrar(db) -> None:
+    """Siembra la estructura académica de ejemplo en la sesión dada (idempotente)."""
+    fac = db.scalar(select(Facultad).where(Facultad.nombre == FACULTAD))
+    if fac is None:
+        fac = Facultad(nombre=FACULTAD)
+        db.add(fac)
+        db.flush()
+        print(f"Creada: {FACULTAD}")
+
+    prog = db.scalar(select(Programa).where(Programa.codigo == PROGRAMA[1]))
+    if prog is None:
+        prog = Programa(facultad_id=fac.id, nombre=PROGRAMA[0], codigo=PROGRAMA[1])
+        db.add(prog)
+        db.flush()
+        print(f"Creado el programa: {PROGRAMA[0]}")
+
+    ras: dict[str, ResultadoAprendizaje] = {}
+    for codigo, descripcion in RESULTADOS:
+        ra = db.scalar(select(ResultadoAprendizaje).where(ResultadoAprendizaje.programa_id == prog.id, ResultadoAprendizaje.codigo == codigo))
+        if ra is None:
+            ra = ResultadoAprendizaje(programa_id=prog.id, codigo=codigo, descripcion=descripcion)
+            db.add(ra)
+            db.flush()
+            print(f"Creado el resultado de aprendizaje {codigo}")
+        ras[codigo] = ra
+
+    asignaturas: dict[str, Asignatura] = {}
+    for codigo, nombre, semestre, codigos_ra in ASIGNATURAS:
+        a = db.scalar(select(Asignatura).where(Asignatura.programa_id == prog.id, Asignatura.codigo == codigo))
+        if a is None:
+            a = Asignatura(programa_id=prog.id, nombre=nombre, codigo=codigo, semestre=semestre, resultados=[ras[c] for c in codigos_ra])
+            db.add(a)
+            db.flush()
+            print(f"Creada la asignatura {nombre}")
+        asignaturas[codigo] = a
+
+    usuarios = {email: _usuario(db, nombre, email, rol) for nombre, email, rol in USUARIOS}
+    coordinador = usuarios["coordinador@demo.com"]
+    if coordinador.programa_id is None:
+        coordinador.programa_id = prog.id
+        print("Programa asignado al coordinador demo")
+
+    docente, estudiante = usuarios["docente@demo.com"], usuarios["estudiante@demo.com"]
+    grupo = db.scalar(select(Grupo).where(Grupo.asignatura_id == asignaturas["BD101"].id, Grupo.docente_id == docente.id, Grupo.periodo == PERIODO))
+    if grupo is None:
+        while True:
+            codigo = generar_codigo()
+            if not db.scalar(select(Grupo.id).where(Grupo.codigo_ingreso == codigo)):
+                break
+        grupo = Grupo(asignatura_id=asignaturas["BD101"].id, docente_id=docente.id, periodo=PERIODO, nombre="Grupo A", codigo_ingreso=codigo)
+        db.add(grupo)
+        db.flush()
+        print(f"Creado el grupo «Grupo A» ({PERIODO})")
+    if not db.scalar(select(Matricula.id).where(Matricula.grupo_id == grupo.id, Matricula.estudiante_id == estudiante.id)):
+        db.add(Matricula(grupo_id=grupo.id, estudiante_id=estudiante.id))
+        print("Estudiante demo matriculado en el grupo")
+    db.commit()
+    print(f"Código de ingreso del grupo demo: {grupo.codigo_ingreso}")
+
+
 def main() -> None:
     crear_tablas()
     with SessionLocal() as db:
-        fac = db.scalar(select(Facultad).where(Facultad.nombre == FACULTAD))
-        if fac is None:
-            fac = Facultad(nombre=FACULTAD)
-            db.add(fac)
-            db.flush()
-            print(f"Creada: {FACULTAD}")
-
-        prog = db.scalar(select(Programa).where(Programa.codigo == PROGRAMA[1]))
-        if prog is None:
-            prog = Programa(facultad_id=fac.id, nombre=PROGRAMA[0], codigo=PROGRAMA[1])
-            db.add(prog)
-            db.flush()
-            print(f"Creado el programa: {PROGRAMA[0]}")
-
-        ras: dict[str, ResultadoAprendizaje] = {}
-        for codigo, descripcion in RESULTADOS:
-            ra = db.scalar(select(ResultadoAprendizaje).where(ResultadoAprendizaje.programa_id == prog.id, ResultadoAprendizaje.codigo == codigo))
-            if ra is None:
-                ra = ResultadoAprendizaje(programa_id=prog.id, codigo=codigo, descripcion=descripcion)
-                db.add(ra)
-                db.flush()
-                print(f"Creado el resultado de aprendizaje {codigo}")
-            ras[codigo] = ra
-
-        asignaturas: dict[str, Asignatura] = {}
-        for codigo, nombre, semestre, codigos_ra in ASIGNATURAS:
-            a = db.scalar(select(Asignatura).where(Asignatura.programa_id == prog.id, Asignatura.codigo == codigo))
-            if a is None:
-                a = Asignatura(programa_id=prog.id, nombre=nombre, codigo=codigo, semestre=semestre, resultados=[ras[c] for c in codigos_ra])
-                db.add(a)
-                db.flush()
-                print(f"Creada la asignatura {nombre}")
-            asignaturas[codigo] = a
-
-        usuarios = {email: _usuario(db, nombre, email, rol) for nombre, email, rol in USUARIOS}
-        coordinador = usuarios["coordinador@demo.com"]
-        if coordinador.programa_id is None:
-            coordinador.programa_id = prog.id
-            print("Programa asignado al coordinador demo")
-
-        docente, estudiante = usuarios["docente@demo.com"], usuarios["estudiante@demo.com"]
-        grupo = db.scalar(select(Grupo).where(Grupo.asignatura_id == asignaturas["BD101"].id, Grupo.docente_id == docente.id, Grupo.periodo == PERIODO))
-        if grupo is None:
-            while True:
-                codigo = generar_codigo()
-                if not db.scalar(select(Grupo.id).where(Grupo.codigo_ingreso == codigo)):
-                    break
-            grupo = Grupo(asignatura_id=asignaturas["BD101"].id, docente_id=docente.id, periodo=PERIODO, nombre="Grupo A", codigo_ingreso=codigo)
-            db.add(grupo)
-            db.flush()
-            print(f"Creado el grupo «Grupo A» ({PERIODO})")
-        if not db.scalar(select(Matricula.id).where(Matricula.grupo_id == grupo.id, Matricula.estudiante_id == estudiante.id)):
-            db.add(Matricula(grupo_id=grupo.id, estudiante_id=estudiante.id))
-            print("Estudiante demo matriculado en el grupo")
-        db.commit()
-        print(f"Código de ingreso del grupo demo: {grupo.codigo_ingreso}")
+        sembrar(db)
 
 
 if __name__ == "__main__":

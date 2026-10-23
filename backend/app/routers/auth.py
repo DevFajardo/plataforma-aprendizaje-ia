@@ -28,7 +28,7 @@ from app.modelos import (
 )
 from app.routers import procesar
 from app.routers.cuestionarios import borrar_cuestionario
-from app.schemas_api import CuentaEditarIn, EliminarCuentaIn, LoginIn, RegistroIn, TokenOut, UsuarioOut
+from app.schemas_api import CuentaEditarIn, EliminarCuentaIn, LoginIn, RegistroIn, TokenOut, TutorialIn, UsuarioOut
 from app.seguridad import crear_token, hashear_password, usuario_actual, verificar_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -81,6 +81,21 @@ def editar_cuenta(datos: CuentaEditarIn, usuario: Usuario = Depends(usuario_actu
     if datos.acepta_tratamiento_datos is True and not usuario.acepta_tratamiento_datos:
         usuario.acepta_tratamiento_datos = True
         usuario.consentimiento_fecha = ahora()
+    db.commit()
+    return usuario
+
+
+@router.put("/tutorial", response_model=UsuarioOut)
+def marcar_tutorial(datos: TutorialIn, usuario: Usuario = Depends(usuario_actual), db: Session = Depends(get_db)):
+    """Marca (o desmarca, para repetirlo) el tutorial de primer uso del rol actual del usuario."""
+    try:
+        vistos = [x for x in json.loads(usuario.tutorial_visto or "[]") if isinstance(x, str)]
+    except ValueError:
+        vistos = []
+    vistos = [x for x in vistos if x != usuario.rol]
+    if datos.visto:
+        vistos.append(usuario.rol)
+    usuario.tutorial_visto = json.dumps(vistos)
     db.commit()
     return usuario
 

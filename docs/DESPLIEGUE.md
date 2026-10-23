@@ -61,6 +61,30 @@ Sirve para que otras personas (jurado, compañeros) entren desde sus teléfonos 
 
 Las URL cambian cada vez que reinicias `cloudflared`; por eso es un enlace *temporal*. Si solo vas a presentar desde tu computador, no necesitas el túnel.
 
+## Opción A2: demo en red local (LAN) con `iniciar_demo.ps1`
+
+Para que el jurado o los compañeros entren **desde sus celulares en el mismo Wi-Fi** (sin internet público ni túneles), usa el script de la raíz del repositorio:
+
+```powershell
+.\iniciar_demo.ps1          # build + start (más rápido para presentar)
+.\iniciar_demo.ps1 -Dev     # next dev (sin compilar)
+.\iniciar_demo.ps1 -Ip 192.168.1.50   # si la detección automática elige otra tarjeta de red
+```
+
+El script: (1) detecta la IPv4 del adaptador Wi-Fi/Ethernet activo (el que tiene puerta de enlace), (2) arranca el backend en `0.0.0.0:8000` con `FRONTEND_URL=http://localhost:3000,http://127.0.0.1:3000,http://IP:3000`, (3) arranca el frontend en `0.0.0.0:3000` con `NEXT_PUBLIC_API_URL=http://IP:8000` y `NEXT_PUBLIC_URL_PUBLICA=http://IP:3000`, y (4) imprime las URLs. Los puertos 3000 y 8000 deben estar libres (detén antes tus servidores de desarrollo).
+
+**Firewall de Windows (una sola vez, PowerShell como administrador).** Sin esta regla, los otros dispositivos no podrán conectarse. El script **no** la crea por ti:
+
+```powershell
+New-NetFirewallRule -DisplayName "Aprendizaje Activo (demo LAN)" -Direction Inbound -Protocol TCP -LocalPort 3000,8000 -Action Allow -Profile Private
+# Para quitarla al terminar:
+Remove-NetFirewallRule -DisplayName "Aprendizaje Activo (demo LAN)"
+```
+
+**QR de la clase en vivo.** El QR y los enlaces para compartir usan el origen con el que se abrió la página. Si el docente abre `http://localhost:3000`, el QR apuntaría a `localhost` (inútil en los celulares). Por eso el script define `NEXT_PUBLIC_URL_PUBLICA`; si ejecutas el frontend a mano, defínela antes de compilar/iniciar (por ejemplo `$env:NEXT_PUBLIC_URL_PUBLICA="http://192.168.1.50:3000"`). También sirve para poner la URL pública de un despliegue o de un túnel. Si el docente abre la página directamente por la IP, no hace falta.
+
+**Instalar como app (PWA).** El botón «Instalar app» de Chrome/Edge exige un contexto seguro: funciona en `localhost` y en `https://`, pero **no** sobre `http://IP` en la red local (el navegador no ofrece la instalación ni registra el service worker). En LAN la plataforma funciona igual como página web; para la instalación usa el despliegue en la nube (https) o un túnel.
+
 ## Opción B: nube gratuita
 
 | Pieza | Servicio | Notas |
@@ -69,32 +93,52 @@ Las URL cambian cada vez que reinicias `cloudflared`; por eso es un enlace *temp
 | Backend | **Render** (con el `Dockerfile`) o **Hugging Face Spaces** (Docker) | Plan gratuito con limitaciones (abajo). |
 | Base de datos | **Neon** o **Supabase** (PostgreSQL) | El disco del backend gratuito es efímero: SQLite se perdería. |
 
-### 1. Base de datos PostgreSQL
+### 1. Base de datos en Neon (PostgreSQL)
 
-1. Crea un proyecto en [Neon](https://neon.tech) o [Supabase](https://supabase.com) y copia la cadena de conexión.
-2. Conviértela al formato de SQLAlchemy con el driver `psycopg` (3):
+1. Crea un proyecto en [Neon](https://neon.tech) (plan gratuito) y copia la cadena de conexión (*Connection string*, con `sslmode=require`).
+2. El backend acepta `postgres://…` y `postgresql://…` y los convierte al driver `psycopg` 3 (`postgresql+psycopg://usuario:clave@host/basededatos?sslmode=require`). Las tablas se crean solas al arrancar (`create_all`) y las columnas nuevas se migran con `ALTER TABLE` si faltan.
+3. Guarda esa cadena: será `DATABASE_URL` en Render y en los scripts de semilla.
 
-   ```
-   postgresql+psycopg://usuario:clave@host/basededatos?sslmode=require
-   ```
+### 2. Backend en Render (Docker, plan gratuito)
 
-   (Si el proveedor entrega `postgres://…` o `postgresql://…`, el backend lo convierte automáticamente.) Las tablas se crean solas al arrancar.
+El repositorio incluye `render.yaml` (Blueprint) con el servicio web Docker del backend, el *health check* `/api/salud` y la lista de variables.
 
-### 2. Backend en Render
+1. Sube el proyecto a GitHub (el `.env` y los `*.db` están en `.gitignore`).
+2. En Render: **New → Blueprint** → elige el repositorio (lee `render.yaml`), o **New → Web Service** → **Root Directory** `backend` → **Runtime: Docker**. Render define `$PORT`.
+3. Variables de entorno: `DATABASE_URL` (Neon), `FRONTEND_URL` (la URL de Vercel; se puede dejar `http://localhost:3000` al principio y actualizarla), `GEMINI_API_KEY`, `GROQ_API_KEY`, `PROVEEDORES_IA=gemini,groq`, `SECRET_KEY` (el Blueprint la genera) e `IDIOMA_TRANSCRIPCION=es`.
+4. **Un solo worker y una sola instancia.** La clase en vivo guarda su estado (sesiones, conexiones WebSocket) en la memoria del proceso. El `Dockerfile` lanza `uvicorn` con un único proceso; no uses `--workers N` ni escales a varias instancias.
+5. **WebSockets.** Render los admite sobre el mismo servicio: el navegador usa `wss://TU-BACKEND.onrender.com/…` automáticamente porque la API es `https://`. No hay configuración adicional.
+6. Despliega y comprueba `https://TU-BACKEND.onrender.com/api/salud`.
 
-1. Sube el proyecto a GitHub (el `.env` no se versiona).
-2. En Render: **New → Web Service** → tu repositorio → **Root Directory** `backend` → **Runtime: Docker** (usa `backend/Dockerfile`; Render define `$PORT`).
-3. Variables de entorno: `SECRET_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `PROVEEDORES_IA=gemini,groq`, `DATABASE_URL` (la de PostgreSQL), `FRONTEND_URL` (la URL de Vercel; admite varias separadas por comas) y, si quieres, `IDIOMA_TRANSCRIPCION`.
-4. Despliega y comprueba `https://TU-BACKEND.onrender.com/api/salud`.
-5. Para crear las cuentas demo, abre una *Shell* del servicio y ejecuta `python scripts/crear_demo.py`, o simplemente regístralas desde la aplicación.
-
-**Hugging Face Spaces**: crea un Space de tipo *Docker*, sube el contenido de `backend/` y define el puerto `7860` (variable `PORT=7860` y `app_port: 7860` en el README del Space). Las variables se configuran como *Secrets*.
+**Hugging Face Spaces** (alternativa): Space de tipo *Docker*, sube el contenido de `backend/`, `PORT=7860` y `app_port: 7860`; las variables van como *Secrets*.
 
 ### 3. Frontend en Vercel
 
-1. **Add New → Project** → importa el repositorio → **Root Directory** `frontend`.
-2. Variable de entorno: `NEXT_PUBLIC_API_URL=https://TU-BACKEND.onrender.com`.
-3. Despliega. Después añade la URL de Vercel a `FRONTEND_URL` del backend (CORS) y reinícialo.
+1. **Add New → Project** → importa el repositorio → **Root Directory** `frontend` (Next.js, sin configuración extra).
+2. Variable de entorno: `NEXT_PUBLIC_API_URL=https://TU-BACKEND.onrender.com` (**https**; con `http` el navegador bloquearía las peticiones y los WebSockets por contenido mixto). Opcional: `NEXT_PUBLIC_URL_PUBLICA=https://TU-FRONTEND.vercel.app` para fijar el origen del QR.
+3. Despliega. Después añade la URL de Vercel a `FRONTEND_URL` del backend (CORS; varias separadas por comas, sin barra final) y reinicia el servicio. Si cambias `NEXT_PUBLIC_API_URL`, hay que volver a desplegar (se incrusta al compilar).
+4. Con https, el navegador ofrece **Instalar app** (PWA) y registra el service worker.
+
+### 4. Datos de ejemplo en producción
+
+Los scripts leen `DATABASE_URL`, así que se pueden ejecutar contra Neon desde tu computador o desde la *Shell* de Render (servicio → **Shell**):
+
+```powershell
+# Desde tu equipo (PowerShell), apuntando a Neon
+cd backend
+$env:DATABASE_URL = "postgresql+psycopg://usuario:clave@host/db?sslmode=require"
+.\.venv\Scripts\python.exe scripts\crear_demo.py            # docente y estudiante demo
+.\.venv\Scripts\python.exe scripts\sembrar_estructura.py    # facultad, programa, RA, coordinador y admin
+.\.venv\Scripts\python.exe scripts\sembrar_demo.py          # 24 estudiantes, 5 cuestionarios, intentos, alertas...
+# En la Shell de Render:  python scripts/sembrar_demo.py
+```
+
+`sembrar_demo.py --reset-demo` borra solo lo que sembró. Cambia las contraseñas demo antes de abrir el sitio al público.
+
+### Compatibilidad con PostgreSQL: qué se verificó (y qué no)
+
+- **Verificado:** el código y los modelos no usan nada exclusivo de SQLite: solo tipos genéricos de SQLAlchemy (`Integer`, `String`, `Text`, `Boolean`, `Float`, `DateTime(timezone=True)`), sin SQL crudo específico. Hay una prueba (`test_modelos_compilan_para_postgresql`) que genera el DDL de **todas** las tablas con el dialecto de PostgreSQL. Las migraciones usan `ALTER TABLE … ADD COLUMN` con valores por defecto estándar (`BOOLEAN DEFAULT FALSE`, `TEXT DEFAULT '[]'`). Las 300+ pruebas pasan con SQLite.
+- **No verificado:** no se ejecutó la aplicación contra un servidor PostgreSQL real porque en el equipo de desarrollo no había Docker ni PostgreSQL instalados. Antes de la presentación en la nube conviene hacer una pasada completa (registro → generar → responder → clase en vivo → coordinación) y revisar los registros de Render.
 
 ### Limitaciones de la nube gratuita (léelas antes de elegir)
 

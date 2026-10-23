@@ -40,6 +40,8 @@ class Usuario(Base):
     consentimiento_investigacion: Mapped[bool] = mapped_column(Boolean, default=False)
     consentimiento_fecha: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
+    # Sprint 9: roles cuyo tutorial de primer uso ya vio el usuario (lista JSON, p. ej. '["docente"]')
+    tutorial_visto: Mapped[str] = mapped_column(Text, default="[]")
 
 
 class Video(Base):
@@ -403,3 +405,15 @@ class PreguntaBanco(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=ahora)
 
     autor: Mapped[Usuario] = relationship()
+
+
+# ---------- Sprint 9: registro de los datos de demostración ----------
+
+class RegistroDemo(Base):
+    """Filas creadas por `scripts/sembrar_demo.py`; permite borrar SOLO lo sembrado con `--reset-demo`."""
+
+    __tablename__ = "registro_demo"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entidad: Mapped[str] = mapped_column(String(30), index=True)  # nombre de la tabla
+    entidad_id: Mapped[int] = mapped_column(Integer)

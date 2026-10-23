@@ -108,6 +108,7 @@ export default function CampanaNotificaciones() {
         aria-expanded={abierto}
         aria-label={noLeidas > 0 ? `Notificaciones, ${noLeidas} sin leer` : "Notificaciones"}
         onClick={() => setAbiertoEn(abierto ? null : ruta)}
+        data-tutorial="campana"
         className="relative flex h-11 w-11 items-center justify-center rounded-lg border border-white/30 text-white transition hover:bg-white/10 xl:h-10 xl:w-10"
       >
         <Icono nombre="campana" tamano={22} />

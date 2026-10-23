@@ -7,7 +7,9 @@ import "./globals.css";
 import { ProveedorLogo } from "@/components/MarcaInstitucional";
 import Navbar from "@/components/Navbar";
 import PiePagina from "@/components/PiePagina";
+import ProveedorTutorial from "@/components/Tutorial";
 import { AuthProvider } from "@/lib/auth";
+import RegistroPWA from "@/lib/pwa";
 
 // Tipografía institucional de la CUL (Montserrat, fuente variable: pesos 100-900)
 const montserrat = Montserrat({
@@ -23,6 +25,10 @@ export const metadata: Metadata = {
   },
   description:
     "Convierte un video de YouTube o Vimeo en un resumen y un cuestionario interactivo generados con IA. Proyecto académico de Ingeniería de Sistemas y Computación, Corporación Universitaria Latinoamericana.",
+  applicationName: "Aprendizaje Activo CUL",
+  manifest: "/manifest.webmanifest",
+  icons: { apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "AA CUL", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
@@ -49,11 +55,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </a>
         <ProveedorLogo hayLogo={hayLogo}>
           <AuthProvider>
-            <Suspense fallback={null}>
-              <Navbar />
-            </Suspense>
-            {children}
-            <PiePagina />
+            <ProveedorTutorial>
+              <Suspense fallback={null}>
+                <Navbar />
+              </Suspense>
+              {children}
+              <PiePagina />
+            </ProveedorTutorial>
+            <RegistroPWA />
           </AuthProvider>
         </ProveedorLogo>
       </body>

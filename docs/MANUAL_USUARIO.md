@@ -221,6 +221,12 @@ En **Mi cuenta** puedes:
 
 Estos derechos (conocer, actualizar, rectificar, suprimir y revocar) están descritos en la **Política de tratamiento de datos personales** (Ley 1581 de 2012). Si tu cuenta es anterior a la política, el Panel te pedirá aceptarla.
 
+### Tutorial, instalación y ayuda
+
+- **Tutorial de primer uso:** al entrar por primera vez a tu panel se abre una guía de 6 o 7 pasos que destaca los elementos reales de la barra superior. Usa **Siguiente / Anterior**, **Omitir** o la tecla **Escape**. Puedes repetirlo en **Mi cuenta → Ayuda y aplicación → Ver tutorial**.
+- **Instalar la app:** en Chrome, Edge o Android aparece el botón **Instalar app** (pie de página y Mi cuenta) cuando el sitio se abre por https. En iPhone/iPad: abre la página en Safari, toca **Compartir** y luego **Agregar a inicio**. Sin internet verás una pantalla «Sin conexión» con el botón Reintentar; los datos siempre se guardan en el servidor.
+- **Menú «Más»:** en pantallas de escritorio, los docentes tienen Unirse, Historial y Encuesta dentro del menú **Más**.
+
 ## 10. Preguntas frecuentes
 
 **¿Cuánto cuesta?** Nada: usa planes gratuitos de las herramientas de IA.

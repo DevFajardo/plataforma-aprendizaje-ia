@@ -1,0 +1,31 @@
+# Blueprint de Render (plan gratuito) para el BACKEND. El frontend va en Vercel (ver docs/DESPLIEGUE.md).
+# No contiene secretos: las variables con `sync: false` se piden al crear el servicio.
+services:
+  - type: web
+    name: aprendizaje-activo-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/salud
+    autoDeploy: true
+    # IMPORTANTE: un solo worker/instancia. El estado de la clase en vivo (WebSocket) vive en memoria del proceso;
+    # con varios workers o instancias los participantes quedarían en procesos distintos. El Dockerfile ya lanza
+    # uvicorn con un único proceso: no lo cambies a --workers N ni escales a más de una instancia.
+    envVars:
+      - key: DATABASE_URL        # cadena de Neon: postgresql+psycopg://usuario:clave@host/db?sslmode=require
+        sync: false
+      - key: SECRET_KEY          # cadena larga aleatoria (>= 32 caracteres)
+        generateValue: true
+      - key: FRONTEND_URL        # URL de Vercel; admite varias separadas por comas, sin barra final
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: PROVEEDORES_IA
+        value: gemini,groq
+      - key: IDIOMA_TRANSCRIPCION
+        value: es
+      - key: PYTHON_VERSION
+        value: "3.12"

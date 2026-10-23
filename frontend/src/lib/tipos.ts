@@ -12,6 +12,8 @@ export interface Usuario {
   programa_id?: number | null;
   acepta_tratamiento_datos: boolean;
   consentimiento_investigacion: boolean;
+  /** Roles cuyo tutorial de primer uso ya vio el usuario. */
+  tutorial_visto?: string[];
 }
 
 export interface RespuestaAuth {

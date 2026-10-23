@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B468A"/>
+      <stop offset="1" stop-color="#172741"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#fondo)"/>
+  <!-- pantalla de video -->
+  <rect x="88" y="140" width="336" height="232" rx="36" fill="#FFFFFF"/>
+  <rect x="88" y="320" width="336" height="52" rx="26" fill="#E4EEF9"/>
+  <!-- botón de reproducir -->
+  <path d="M220 190 L220 296 L312 243 Z" fill="#E88A37" stroke="#E88A37" stroke-width="14" stroke-linejoin="round"/>
+  <!-- barra de progreso -->
+  <rect x="118" y="338" width="276" height="12" rx="6" fill="#B9CCE6"/>
+  <rect x="118" y="338" width="150" height="12" rx="6" fill="#0B468A"/>
+  <!-- destello de idea -->
+  <path d="M400 70 L414 112 L456 126 L414 140 L400 182 L386 140 L344 126 L386 112 Z" fill="#F6B70B"/>
+</svg>

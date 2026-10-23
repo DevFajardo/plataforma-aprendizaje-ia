@@ -1,0 +1,20 @@
+{
+  "name": "Aprendizaje Activo CUL",
+  "short_name": "AA CUL",
+  "description": "Plataforma de Aprendizaje Activo con IA: convierte videos en resúmenes y cuestionarios interactivos. Proyecto académico de Ingeniería de Sistemas y Computación.",
+  "lang": "es",
+  "dir": "ltr",
+  "id": "/",
+  "start_url": "/?origen=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B468A",
+  "theme_color": "#0B468A",
+  "categories": ["education"],
+  "icons": [
+    { "src": "/icons/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

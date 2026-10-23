@@ -247,6 +247,7 @@ Todos los endpoints (salvo los marcados «público») exigen la cabecera `Author
 
 | Método | Ruta | Permisos | Descripción |
 |---|---|---|---|
+| PUT | `/api/auth/tutorial` | autenticado | Marca (`visto: true`) o desmarca el tutorial de primer uso del rol actual. |
 | GET | `/api/salud` | público | Estado del servicio y proveedores de IA configurados. |
 | POST | `/api/auth/registro` | público | Crea una cuenta (rol estudiante/docente) y devuelve el token. Exige `acepta_tratamiento_datos: true` (422 si no); `consentimiento_investigacion` es opcional. 409 si el correo existe. |
 | POST | `/api/auth/login` | público | Inicia sesión y devuelve el token. 401 si las credenciales son incorrectas. |
@@ -444,7 +445,7 @@ Columnas nuevas (migradas por `_migrar_columnas`): `preguntas.verificacion` (JSO
 
 ### Calificación de preguntas abiertas con IA
 
-`services/calificacion.py`. Al responder una abierta, `calificar_abierta` envía enunciado, respuesta modelo, explicación y la respuesta del estudiante (entre marcadores, tratada como dato) con una rúbrica fija y guarda en la respuesta (`Intento.respuestas_json`) el campo `ia = {puntaje 0–100, nivel, retroalimentacion, falto, proveedor}`. El **nivel se deriva del puntaje** (insuficiente 0–39, básico 40–64, bueno 65–84, excelente 85–100), de modo que siempre es coherente. Una respuesta vacía vale 0 sin llamar a la IA. Si la IA falla no se bloquea la respuesta (no hay sugerencia). El estudiante recibe `calificacion_ia` solo con retroalimentación (no en control ni en diferido); el docente siempre ve la sugerida.
+`services/calificacion.py`. Al responder una abierta, `calificar_abierta` envía enunciado, respuesta modelo, explicación y la respuesta del estudiante (entre marcadores, tratada como dato) con una rúbrica fija y guarda en la respuesta (`Intento.respuestas_json`) el campo `ia = {puntaje 0–100, nivel, retroalimentacion, falto, proveedor}`. El **nivel se deriva del puntaje** (insuficiente 0–39, básico 40–69, bueno 70–89, excelente 90–100; calibrado en el Sprint 9, ver «5c»), de modo que siempre es coherente. Una respuesta vacía vale 0 sin llamar a la IA. Si la IA falla no se bloquea la respuesta (no hay sugerencia). El estudiante recibe `calificacion_ia` solo con retroalimentación (no en control ni en diferido); el docente siempre ve la sugerida.
 
 El docente fija la nota final con `PUT /api/intentos/{intento}/abiertas/{pregunta}/nota` `{nota 0–100}`; se guarda `nota_final` en la respuesta y, si el intento ya está finalizado, se recalcula. **Fórmula del puntaje** (`calcular_puntaje`):
 
@@ -496,6 +497,20 @@ Mínimo de **5 respuestas** por pregunta (`MINIMO_RESPUESTAS`); con menos, `sufi
 | GET | `/api/videos/{id}/subtitulos.vtt` · `transcripcion.txt` · `transcripcion` | creador o publicado | WebVTT, descarga de texto y JSON de segmentos. |
 
 `GET /api/cuestionarios/{id}` añade `video_id` y, para el creador, `verificacion` y `banco_id` por pregunta. `POST /api/intentos/{id}/responder` añade `calificacion_ia` (solo preguntas abiertas con retroalimentación; si no hay, la clave se omite). `GET .../resultados` añade `items`, `sugerida`, `nota_final` e `intento_id` en las respuestas abiertas.
+
+## 5c. Sprint 9: cierre (PWA, tutorial, demo, calibración y despliegue)
+
+**PWA.** `frontend/public/manifest.webmanifest` («Aprendizaje Activo CUL» / «AA CUL», `display: standalone`, colores CUL, iconos PNG 192, 512 y *maskable* generados desde `public/icons/icono*.svg`, un diseño propio, no el logo de la CUL), `public/sw.js` y `public/offline.html`. El layout enlaza el manifest con `metadata.manifest` y registra el service worker (`lib/pwa.tsx`, solo en producción). El SW precachea la página «Sin conexión» e iconos; sirve `/_next/static/*` e iconos con caché primero; las navegaciones van red primero con copia o la página offline como respaldo; **no intercepta nunca `/api` ni otros orígenes** (el backend suele estar en otro origen) y los WebSockets no pasan por un service worker. El botón «Instalar app» (`BotonInstalarApp`, en el pie y en «Mi cuenta») usa `beforeinstallprompt`; en iPhone/iPad muestra Compartir → Agregar a inicio. La instalación requiere contexto seguro (https o localhost).
+
+**Tutorial de primer uso.** Columna `usuarios.tutorial_visto` (texto JSON con la lista de roles cuyo tutorial se vio; migración `ALTER TABLE` en `db.py`), expuesta como `tutorial_visto: list[str]` en `UsuarioOut`, y `PUT /api/auth/tutorial {visto: bool}` que marca o desmarca el rol actual. Los pasos están en `lib/tutoriales.ts` (estudiante 7, docente 7, coordinador 6) y apuntan a elementos reales con `data-tutorial="…"` de la barra de navegación; si el elemento no es visible (móvil, menú «Más») se destaca el botón del menú. `components/Tutorial.tsx` es una implementación propia: foco sobre el elemento con `box-shadow`, diálogo modal accesible (foco atrapado, Escape = omitir, Anterior/Siguiente/Omitir, «Paso X de N»), tarjeta inferior en móvil. Se abre sola en `/panel` la primera vez de cada rol y se repite desde «Mi cuenta» → «Ver tutorial».
+
+**Datos de demostración.** `backend/scripts/sembrar_demo.py` (+ `datos_demo.py` con el contenido escrito a mano) crea, sobre `sembrar_estructura.sembrar(db)`, 3 grupos (2026-2), 24 estudiantes `@demo.com`, 5 cuestionarios (4 temas y una versión control de ordenamiento asignada al grupo de Redes), 40 preguntas con RA/Bloom/verificación, ~85 intentos con perfiles (buenos, medios, inactivos, bajo promedio, caída y repasos vencidos), repasos diferidos (la versión control retiene menos), 2 clases en vivo, notas de IA sugeridas con aprobación parcial, 15 SUS (≈75), 12 preguntas de banco, notificaciones y una alerta atendida. Es determinista (semilla 2026), idempotente y no usa IA. Todo lo creado se anota en la tabla `registro_demo` (marca + filas raíz); `--reset-demo` borra únicamente eso y lo que cuelga de ello. Las transcripciones son resúmenes escritos para la demo (no literales). Los `youtube_id` son videos públicos en español verificados con oEmbed; cámbialos en `datos_demo.py` si dejan de existir.
+
+**Calibración de la calificación de abiertas.** El prompt de `services/calificacion.py` pide extraer 2–4 ideas clave de la respuesta modelo, dar crédito parcial proporcional, no penalizar sinónimos, redacción informal ni detalles no esenciales, y mencionar primero lo que está bien. Niveles: insuficiente < 40, básico 40–69, bueno 70–89, excelente ≥ 90 (el nivel sigue derivándose de la nota). Validación con IA real (Gemini) con una pregunta de normalización y tres respuestas: parcial → 72 (bueno), buena e informal → 95 (excelente), incorrecta → 0 (insuficiente). Antes, una respuesta parcialmente correcta recibía 20/100.
+
+**Barra de navegación.** `Navbar.tsx` separa enlaces principales y un menú «Más» (docente: Unirse, Historial y Encuesta). Verificado con Playwright a 1024 (menú hamburguesa), 1280, 1440 y 1920 px para los cuatro roles, sin desbordes. `app/not-found.tsx`, `error.tsx` (en esta versión de Next la propiedad es `retry`) y `global-error.tsx` dan páginas amables; cada ruta tiene título y descripción.
+
+**LAN y despliegue.** `iniciar_demo.ps1`, `NEXT_PUBLIC_URL_PUBLICA` (`lib/urlPublica.ts`, usada por el QR de la clase en vivo y por «Copiar enlace»), `render.yaml` y la guía de `docs/DESPLIEGUE.md`. Se mantiene **un solo worker** por el estado en memoria del modo en vivo. PostgreSQL: el DDL de todos los modelos se genera para el dialecto `postgresql` en una prueba; no se probó contra un servidor real (ver DESPLIEGUE).
 
 ## 6. Seguridad
 

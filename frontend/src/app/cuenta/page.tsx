@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import BotonInstalarApp from "@/components/BotonInstalarApp";
+import { useTutorial } from "@/components/Tutorial";
 import {
   Aviso,
   Boton,
@@ -39,9 +41,12 @@ function Seccion({ icono, titulo, children, peligro, ...resto }: { icono: Nombre
   );
 }
 
+const ROLES: Record<string, string> = { docente: "Docente", estudiante: "Estudiante", coordinador: "Coordinador", admin: "Administrador" };
+
 export default function CuentaPage() {
   const { usuario, cargando, actualizarUsuario, logout } = useRequiereLogin();
   const router = useRouter();
+  const tutorial = useTutorial();
 
   const [nombre, setNombre] = useState<string | null>(null); // null = sin editar (se muestra el actual)
   const [msgNombre, setMsgNombre] = useState<MensajeForm>(null);
@@ -156,7 +161,7 @@ export default function CuentaPage() {
       <EncabezadoPagina
         titulo="Mi cuenta"
         descripcion={usuario.email}
-        etiquetas={<Insignia tono="azul">{usuario.rol === "docente" ? "Docente" : "Estudiante"}</Insignia>}
+        etiquetas={<Insignia tono="azul">{ROLES[usuario.rol] ?? usuario.rol}</Insignia>}
       />
 
       <div className="flex flex-col gap-5 sm:gap-6">
@@ -195,6 +200,21 @@ export default function CuentaPage() {
             <Aviso mensaje={msgClave} />
           </Seccion>
         </form>
+
+        <Seccion icono="ayuda" titulo="Ayuda y aplicación" data-tutorial="ayuda">
+          {tutorial.disponible && (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-suave">Repasa en pocos pasos cómo se usa la plataforma según tu rol.</p>
+              <Boton variante="secundario" onClick={() => tutorial.abrir()} className="sm:self-start">
+                <Icono nombre="play" tamano={18} /> Ver tutorial
+              </Boton>
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-suave">Instala la plataforma en tu celular o computador para abrirla como una app.</p>
+            <BotonInstalarApp variante="completa" />
+          </div>
+        </Seccion>
 
         <Seccion icono="escudo" titulo="Privacidad y consentimiento">
           {usuario.acepta_tratamiento_datos ? (

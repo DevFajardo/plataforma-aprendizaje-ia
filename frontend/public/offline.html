@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B468A">
+  <title>Sin conexión · Aprendizaje Activo CUL</title>
+  <style>
+    :root { --fondo:#f3f6fb; --tarjeta:#fff; --texto:#172741; --suave:#44526d; --primario:#0b468a; --borde:#d3dbe8; }
+    @media (prefers-color-scheme: dark) { :root { --fondo:#0e1728; --tarjeta:#172741; --texto:#eef3fa; --suave:#aebbd3; --primario:#2f6db8; --borde:#2d4167; } }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px 16px;
+           background:var(--fondo); color:var(--texto); font-family: Montserrat, "Segoe UI", system-ui, sans-serif; }
+    main { width:100%; max-width:440px; text-align:center; background:var(--tarjeta); border:1px solid var(--borde);
+           border-top:4px solid #e88a37; border-radius:16px; padding:32px 24px; }
+    img { width:84px; height:84px; border-radius:20px; }
+    h1 { font-size:1.5rem; margin:16px 0 8px; }
+    p { color:var(--suave); line-height:1.55; margin:0 0 20px; }
+    button { min-height:48px; padding:0 28px; border:0; border-radius:10px; background:var(--primario); color:#fff; font:inherit; font-weight:700; cursor:pointer; }
+    button:focus-visible { outline:3px solid #0098cc; outline-offset:3px; }
+  </style>
+</head>
+<body>
+  <main role="main">
+    <img src="/icons/icono-192.png" alt="" width="84" height="84">
+    <h1>Sin conexión</h1>
+    <p>Parece que no tienes internet en este momento. Tus cuestionarios y resultados se guardan en la plataforma: cuando vuelvas a conectarte podrás seguir donde lo dejaste.</p>
+    <button type="button" onclick="location.reload()">Reintentar</button>
+  </main>
+</body>
+</html>

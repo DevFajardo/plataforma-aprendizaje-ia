@@ -8,6 +8,7 @@ import { Alerta, Boton, Icono, Spinner, cx } from "@/components/ui";
 import { obtenerSesionVivo } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
 import type { EstadoVivo, SesionVivoInfo } from "@/lib/tipos";
+import { origenPublico } from "@/lib/urlPublica";
 import { useRestanteMs, useSesionVivo } from "@/lib/vivo";
 import { AroTemporizador, Forma, Podio, estiloOpcion } from "./comunes";
 
@@ -242,7 +243,7 @@ export default function Presentador() {
   }, [usuario, id]);
 
   useEffect(() => {
-    const t = setTimeout(() => setOrigen(window.location.origin), 0);
+    const t = setTimeout(() => setOrigen(origenPublico()), 0);
     const alCambiar = () => setPantallaCompleta(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", alCambiar);
     return () => {

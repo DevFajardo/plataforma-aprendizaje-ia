@@ -142,6 +142,10 @@ export const editarCuenta = (datos: {
   acepta_tratamiento_datos?: boolean;
 }) => peticion<Usuario>("/api/auth/cuenta", { method: "PATCH", body: JSON.stringify(datos) });
 
+/** Marca (o desmarca, para repetirlo) el tutorial de primer uso del rol actual. */
+export const marcarTutorial = (visto: boolean) =>
+  peticion<Usuario>("/api/auth/tutorial", { method: "PUT", body: JSON.stringify({ visto }) });
+
 export const obtenerMisDatos = () => peticion<unknown>("/api/auth/mis-datos");
 
 export const eliminarCuenta = (password: string) =>

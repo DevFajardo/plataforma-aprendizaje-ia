@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BotonInstalarApp from "./BotonInstalarApp";
 import MarcaInstitucional from "./MarcaInstitucional";
 
 /** Pie de página institucional: aviso de proyecto académico, privacidad y nota de sitio no oficial. */
@@ -15,6 +16,7 @@ export default function PiePagina() {
               Política de tratamiento de datos personales
             </Link>
           </p>
+          <BotonInstalarApp />
           <p className="text-xs">Sitio académico, no oficial de la institución.</p>
         </div>
       </div>

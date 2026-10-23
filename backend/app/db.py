@@ -52,6 +52,7 @@ _COLUMNAS_NUEVAS = {
         ("consentimiento_investigacion", "BOOLEAN DEFAULT FALSE"),
         ("consentimiento_fecha", "TIMESTAMP"),
         ("programa_id", "INTEGER"),
+        ("tutorial_visto", "TEXT DEFAULT '[]'"),
     ],
     "cuestionarios": [
         ("modo", "VARCHAR(20) DEFAULT 'aprendizaje'"),

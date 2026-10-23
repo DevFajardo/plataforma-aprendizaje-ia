@@ -21,17 +21,23 @@ const HISTORIAL: Enlace = { href: "/historial", texto: "Historial" };
 const ENCUESTA: Enlace = { href: "/encuesta", texto: "Encuesta" };
 const BANCO: Enlace = { href: "/banco", texto: "Banco" };
 
-/** Enlaces del menú según el rol del usuario. */
-function enlacesPorRol(rol: string): Enlace[] {
+/**
+ * Enlaces del menú según el rol. Los `principales` van siempre en la barra; los de `mas` pasan al menú «Más» para
+ * que la barra quepa en pantallas de escritorio (el contenedor mide como máximo 1280 px). En móvil y tablet se listan todos.
+ */
+function enlacesPorRol(rol: string): { principales: Enlace[]; mas: Enlace[] } {
   switch (rol) {
     case "docente":
-      return [PANEL, GENERAR, CUESTIONARIOS, { href: "/cursos", texto: "Cursos" }, BANCO, UNIRSE, HISTORIAL, ENCUESTA, { href: "/comparar", texto: "Comparar" }];
+      return {
+        principales: [PANEL, GENERAR, CUESTIONARIOS, { href: "/cursos", texto: "Cursos" }, BANCO, { href: "/comparar", texto: "Comparar" }],
+        mas: [UNIRSE, HISTORIAL, ENCUESTA],
+      };
     case "coordinador":
-      return [PANEL, { href: "/coordinacion", texto: "Coordinación" }, BANCO, ENCUESTA];
+      return { principales: [PANEL, { href: "/coordinacion", texto: "Coordinación" }, BANCO, ENCUESTA], mas: [] };
     case "admin":
-      return [PANEL, { href: "/admin", texto: "Admin" }, { href: "/coordinacion", texto: "Coordinación" }, { href: "/cursos", texto: "Cursos" }, BANCO, ENCUESTA];
+      return { principales: [PANEL, { href: "/admin", texto: "Admin" }, { href: "/coordinacion", texto: "Coordinación" }, { href: "/cursos", texto: "Cursos" }, BANCO, ENCUESTA], mas: [] };
     default:
-      return [PANEL, GENERAR, CUESTIONARIOS, { href: "/mis-cursos", texto: "Mis cursos" }, UNIRSE, HISTORIAL, ENCUESTA];
+      return { principales: [PANEL, GENERAR, CUESTIONARIOS, { href: "/mis-cursos", texto: "Mis cursos" }, UNIRSE, HISTORIAL, ENCUESTA], mas: [] };
   }
 }
 
@@ -44,22 +50,27 @@ export default function Navbar() {
   // Se guarda la ruta en la que se abrió cada menú: al navegar cambia la ruta y el menú queda cerrado solo.
   const [menuEn, setMenuEn] = useState<string | null>(null);
   const [usuarioEn, setUsuarioEn] = useState<string | null>(null);
+  const [masEn, setMasEn] = useState<string | null>(null);
   const menuAbierto = menuEn === ruta;
   const usuarioAbierto = usuarioEn === ruta;
+  const masAbierto = masEn === ruta;
   const botonMenu = useRef<HTMLButtonElement>(null);
   const cajaUsuario = useRef<HTMLDivElement>(null);
+  const cajaMas = useRef<HTMLDivElement>(null);
 
   // Escape cierra los menús; clic fuera cierra el menú de usuario
   useEffect(() => {
-    if (!menuAbierto && !usuarioAbierto) return;
+    if (!menuAbierto && !usuarioAbierto && !masAbierto) return;
     function alTeclear(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
       if (menuAbierto) botonMenu.current?.focus();
       setMenuEn(null);
       setUsuarioEn(null);
+      setMasEn(null);
     }
     function alPulsar(e: MouseEvent) {
       if (usuarioAbierto && cajaUsuario.current && !cajaUsuario.current.contains(e.target as Node)) setUsuarioEn(null);
+      if (masAbierto && cajaMas.current && !cajaMas.current.contains(e.target as Node)) setMasEn(null);
     }
     document.addEventListener("keydown", alTeclear);
     document.addEventListener("mousedown", alPulsar);
@@ -67,7 +78,7 @@ export default function Navbar() {
       document.removeEventListener("keydown", alTeclear);
       document.removeEventListener("mousedown", alPulsar);
     };
-  }, [menuAbierto, usuarioAbierto]);
+  }, [menuAbierto, usuarioAbierto, masAbierto]);
 
   // Con el menú móvil abierto, el fondo no se desplaza
   useEffect(() => {
@@ -89,12 +100,14 @@ export default function Navbar() {
     return ruta.startsWith(href) || (href === "/unirse" && ruta.startsWith("/c/"));
   }
 
-  const enlaces: Enlace[] = usuario ? enlacesPorRol(usuario.rol) : [{ href: "/", texto: "Inicio" }];
+  const { principales, mas } = usuario ? enlacesPorRol(usuario.rol) : { principales: [{ href: "/", texto: "Inicio" }], mas: [] as Enlace[] };
+  const enlaces: Enlace[] = [...principales, ...mas];
+  const masActivo = mas.some((e) => esActivo(e.href));
 
   const claseEnlace = (href: string, movil: boolean) =>
     cx(
       "relative flex items-center rounded-lg text-sm font-semibold transition duration-150",
-      movil ? "min-h-12 px-4 text-base" : "min-h-10 whitespace-nowrap px-1.5 2xl:px-3.5",
+      movil ? "min-h-12 px-4 text-base" : "min-h-10 whitespace-nowrap px-2.5",
       esActivo(href) ? "bg-white/15 text-white" : "text-white/85 hover:bg-white/10 hover:text-white",
     );
 
@@ -104,17 +117,66 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b-4 border-cul-naranja bg-barra-superior text-white shadow-md">
       <nav aria-label="Principal" className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
         <Link href="/" aria-label="Aprendizaje Activo CUL, ir al inicio" className="min-w-0 rounded-md xl:shrink-0">
-          <MarcaInstitucional titulo="Aprendizaje Activo" subtituloClase="xl:max-2xl:hidden" />
+          <MarcaInstitucional titulo="Aprendizaje Activo" subtituloClase="xl:hidden" />
         </Link>
 
         {/* Navegación de escritorio */}
         <div className="hidden min-w-0 items-center gap-1 xl:flex">
-          {enlaces.map((e) => (
-            <Link key={e.href} href={e.href} aria-current={esActivo(e.href) ? "page" : undefined} className={claseEnlace(e.href, false)}>
+          {principales.map((e) => (
+            <Link
+              key={e.href}
+              href={e.href}
+              data-tutorial={`nav-${e.href}`}
+              aria-current={esActivo(e.href) ? "page" : undefined}
+              className={claseEnlace(e.href, false)}
+            >
               {e.texto}
               {esActivo(e.href) && <span aria-hidden="true" className="absolute inset-x-3 bottom-0.5 h-0.5 rounded-full bg-cul-naranja" />}
             </Link>
           ))}
+
+          {mas.length > 0 && (
+            <div ref={cajaMas} className="relative">
+              <button
+                type="button"
+                data-tutorial="mas"
+                aria-haspopup="menu"
+                aria-expanded={masAbierto}
+                onClick={() => setMasEn(masAbierto ? null : ruta)}
+                className={cx(
+                  "relative flex min-h-10 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 text-sm font-semibold transition duration-150",
+                  masActivo ? "bg-white/15 text-white" : "text-white/85 hover:bg-white/10 hover:text-white",
+                )}
+              >
+                Más
+                <Icono nombre="chevron" tamano={16} className={masAbierto ? "rotate-180 transition" : "transition"} />
+                {masActivo && <span aria-hidden="true" className="absolute inset-x-3 bottom-0.5 h-0.5 rounded-full bg-cul-naranja" />}
+              </button>
+              {masAbierto && (
+                <div
+                  role="menu"
+                  aria-label="Más opciones"
+                  className="anim-aparecer absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-borde bg-superficie py-1 text-texto shadow-lg"
+                >
+                  {mas.map((e) => (
+                    <Link
+                      key={e.href}
+                      role="menuitem"
+                      href={e.href}
+                      data-tutorial={`nav-${e.href}`}
+                      aria-current={esActivo(e.href) ? "page" : undefined}
+                      className={cx(
+                        "flex min-h-11 items-center px-4 text-sm font-semibold hover:bg-superficie-2",
+                        esActivo(e.href) && "bg-superficie-2 text-enlace",
+                      )}
+                    >
+                      {e.texto}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {usuario && (
             <div className="ml-3">
@@ -125,6 +187,7 @@ export default function Navbar() {
             <div ref={cajaUsuario} className="relative ml-1">
               <button
                 type="button"
+                data-tutorial="usuario"
                 aria-haspopup="menu"
                 aria-expanded={usuarioAbierto}
                 onClick={() => setUsuarioEn(usuarioAbierto ? null : ruta)}
@@ -182,6 +245,7 @@ export default function Navbar() {
             ref={botonMenu}
             type="button"
             aria-expanded={menuAbierto}
+            data-tutorial="menu-movil"
             aria-controls="menu-movil"
             aria-label={menuAbierto ? "Cerrar menú" : "Abrir menú"}
             onClick={() => setMenuEn(menuAbierto ? null : ruta)}

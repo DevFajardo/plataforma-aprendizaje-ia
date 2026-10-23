@@ -179,7 +179,7 @@ def test_calcular_puntaje_con_abierta_aprobada_pondera_por_la_nota():
     assert calcular_puntaje(respuestas, preguntas) == (2, 3)  # round(2 + 0,2) = 2
 
 
-@pytest.mark.parametrize("nota,nivel", [(0, "insuficiente"), (39, "insuficiente"), (40, "basico"), (64, "basico"), (65, "bueno"), (84, "bueno"), (85, "excelente"), (100, "excelente")])
+@pytest.mark.parametrize("nota,nivel", [(0, "insuficiente"), (39, "insuficiente"), (40, "basico"), (69, "basico"), (70, "bueno"), (89, "bueno"), (90, "excelente"), (100, "excelente")])
 def test_nivel_por_puntaje(nota, nivel):
     assert nivel_por_puntaje(nota) == nivel
 

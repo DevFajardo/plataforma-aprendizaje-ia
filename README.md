@@ -121,6 +121,28 @@ cd backend
 
 Idempotente (solo añade lo que falta): Facultad de Ingeniería → programa «Ingeniería de Sistemas y Computación» con 4 asignaturas y 5 resultados de aprendizaje de **ejemplo** (marcados «(ejemplo)»; reemplázalos desde `/admin`), las cuentas `coordinador@demo.com` y `admin@demo.com` (contraseña `Demo12345`) y un grupo del docente demo con el estudiante demo matriculado. Muestra el código de ingreso del grupo.
 
+## Demo rápida
+
+Con datos de demostración realistas (sin usar IA) en tres pasos:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe scripts\sembrar_demo.py      # estructura + 24 estudiantes, 5 cuestionarios, intentos, alertas, SUS...
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
+# en otra terminal:  cd frontend ; npm run dev     (abre http://localhost:3000)
+```
+
+| Rol | Correo | Contraseña | Qué mostrar |
+|---|---|---|---|
+| Docente | `docente@demo.com` | `Demo12345` | Panel con 24 estudiantes, resultados con **análisis de ítems**, repasos y retención, **Comparar** (ordenamiento vs. su versión control), alertas en «Cursos», clase en vivo, banco |
+| Coordinador | `coordinador@demo.com` | `Demo12345` | Logro por RA, Bloom, asignaturas, tendencia de 6 semanas y alertas |
+| Administrador | `admin@demo.com` | `Demo12345` | Estructura académica |
+| Estudiante | `estudiante@demo.com` o cualquiera de los 24 (p. ej. `valentina.gomez@demo.com`) | `Demo12345` | Panel, cursos, tutorial de primer uso |
+
+- `sembrar_demo.py` es idempotente; `--reset-demo` borra **solo** lo que sembró (y `--reset-demo --sembrar` lo rehace).
+- Para que otros entren desde sus celulares en el mismo Wi-Fi: `.\iniciar_demo.ps1` (ver [Guía de despliegue](docs/DESPLIEGUE.md), incluye la regla del firewall).
+- Los videos de la demo son públicos en español; si alguno deja de estar disponible, cambia su `youtube_id` en `backend/scripts/datos_demo.py`.
+
 ## Variables de entorno (`backend/.env`)
 
 | Variable | Descripción | Por defecto |
@@ -151,7 +173,7 @@ cd backend
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Más de 120 casos (incluidos los del Sprint 5 en `tests/test_sprint5.py`). Las pruebas usan una base de datos SQLite temporal y simulan la transcripción y la IA: no usan internet ni consumen cuota. Para el frontend: `npm run lint` y `npm run build`.
+Más de 300 casos (uno por sprint en `tests/test_sprint*.py`). Las pruebas usan una base de datos SQLite temporal y simulan la transcripción y la IA: no usan internet ni consumen cuota. Para el frontend: `npm run lint` y `npm run build`.
 
 ## Privacidad y consentimiento
 
@@ -159,7 +181,7 @@ El registro exige aceptar la **política de tratamiento de datos personales** (`
 
 ## Despliegue
 
-Consulta la [Guía de despliegue](docs/DESPLIEGUE.md): demo local con enlace público temporal (Cloudflare Tunnel) o nube gratuita (Vercel + Render/Hugging Face + Neon/Supabase). El backend incluye un `Dockerfile`.
+Consulta la [Guía de despliegue](docs/DESPLIEGUE.md): demo local, demo en red local (`iniciar_demo.ps1`), enlace público temporal (Cloudflare Tunnel) o nube gratuita (Vercel + Render + Neon; el repositorio incluye `render.yaml`). La app es instalable (PWA).
 
 ## Estructura
 

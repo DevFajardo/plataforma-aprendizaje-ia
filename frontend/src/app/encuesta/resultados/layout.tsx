@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-export const metadata: Metadata = { title: "Resultados de la encuesta" };
+export const metadata: Metadata = {
+  title: "Resultados de la encuesta",
+  description: "Resultados agregados y anónimos de la encuesta de usabilidad SUS.",
+};
 
 export default function Layout({ children }: { children: ReactNode }) {
   return children;

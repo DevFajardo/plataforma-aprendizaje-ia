@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { duplicarCuestionario, editarCuestionario, iniciarClaseVivo, listarGrupos, publicarCuestionario } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { CuestionarioDetalle, Grupo } from "@/lib/tipos";
+import { origenPublico } from "@/lib/urlPublica";
 import { Alerta, Boton, BotonEnlace, Icono, Input, Insignia, Select, cx } from "./ui";
 
 interface Props {
@@ -113,7 +114,7 @@ export default function PanelDocente({ cuestionario: c, onEditar, onPublicado, o
   }
 
   async function copiar() {
-    const enlace = `${window.location.origin}/c/${c.codigo_compartir}`;
+    const enlace = `${origenPublico()}/c/${c.codigo_compartir}`;
     try {
       await navigator.clipboard.writeText(enlace);
       setCopiado(true);

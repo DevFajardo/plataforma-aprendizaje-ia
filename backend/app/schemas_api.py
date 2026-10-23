@@ -1,4 +1,5 @@
 """Esquemas de entrada/salida de la API (separados de los que usa el adaptador de IA)."""
+import json
 import re
 from datetime import datetime, timezone
 from typing import Annotated, Literal
@@ -49,6 +50,24 @@ class UsuarioOut(BaseModel):
     programa_id: int | None = None
     acepta_tratamiento_datos: bool = False
     consentimiento_investigacion: bool = False
+    tutorial_visto: list[str] = []
+
+    @field_validator("tutorial_visto", mode="before")
+    @classmethod
+    def _leer_tutorial(cls, v):
+        """En la BD es un texto JSON; en la API, una lista de roles."""
+        if v is None:
+            return []
+        if isinstance(v, str):
+            try:
+                v = json.loads(v)
+            except ValueError:
+                return []
+        return [str(x) for x in v] if isinstance(v, list) else []
+
+
+class TutorialIn(BaseModel):
+    visto: bool
 
 
 class CuentaEditarIn(BaseModel):
