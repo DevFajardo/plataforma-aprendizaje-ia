@@ -88,7 +88,8 @@ export default function MisCursosPage() {
 
       <div className="flex flex-col gap-8">
         <Tarjeta as="section" aria-label="Unirse a un curso">
-          <form onSubmit={unirse} className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          {/* Rejilla: en móvil campo → ayuda → botón; desde sm el botón va junto al campo, alineado con él (la ayuda queda debajo) */}
+          <form onSubmit={unirse} className="grid gap-x-3 gap-y-2 sm:grid-cols-[minmax(0,20rem)_auto] sm:justify-start">
             <Input
               etiqueta="Código de ingreso del curso"
               value={codigo}
@@ -97,11 +98,19 @@ export default function MisCursosPage() {
               autoComplete="off"
               autoCapitalize="characters"
               placeholder="ABC123"
-              ayuda="Tu docente te lo comparte al inicio del periodo."
-              claseCampo="sm:max-w-xs"
+              aria-describedby="ayuda-codigo-curso"
               className="font-mono text-lg font-bold tracking-[0.3em]"
             />
-            <Boton type="submit" cargando={uniendo} disabled={codigo.trim().length < 6}>
+            <p id="ayuda-codigo-curso" className="text-sm text-suave sm:col-span-2">
+              Tu docente te lo comparte al inicio del periodo.
+            </p>
+            <Boton
+              type="submit"
+              tamano="lg"
+              cargando={uniendo}
+              disabled={codigo.trim().length < 6}
+              className="mt-2 min-h-[3.125rem] sm:col-start-2 sm:row-start-1 sm:mt-0 sm:self-end"
+            >
               Unirme al curso
             </Boton>
           </form>
