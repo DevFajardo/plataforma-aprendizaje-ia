@@ -24,7 +24,7 @@ export default function PrivacidadPage() {
             El responsable del tratamiento es el equipo estudiantil que desarrolla el proyecto académico «Plataforma de
             Aprendizaje Activo con IA», en el marco de una asignatura universitaria. No existe una persona jurídica
             comercial detrás de la plataforma. Para cualquier solicitud relacionada con tus datos puedes escribir a:{" "}
-            <strong>[correo del responsable]</strong>.
+            <strong>emmanuel.fajardo@ul.edu.co</strong>.
           </p>
         </section>
 
@@ -81,7 +81,7 @@ export default function PrivacidadPage() {
             <li>Ser informado, previa solicitud, sobre el uso que se ha dado a tus datos, y presentar quejas ante la Superintendencia de Industria y Comercio.</li>
           </ul>
           <p className="mt-2">
-            También puedes ejercer estos derechos escribiendo a <strong>[correo del responsable]</strong>.
+            También puedes ejercer estos derechos escribiendo a <strong>emmanuel.fajardo@ul.edu.co</strong>.
           </p>
         </section>
 
