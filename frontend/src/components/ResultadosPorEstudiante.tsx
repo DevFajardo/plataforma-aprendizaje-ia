@@ -62,21 +62,21 @@ function DetalleIntento({ cuestionarioId, intentoId }: { cuestionarioId: number;
     <ol className="flex flex-col gap-3">
       {res.datos.preguntas.map((p, i) => (
         <li key={p.pregunta_id} className="rounded-lg border border-borde bg-superficie p-3 text-sm">
-          <p className="flex flex-wrap items-start justify-between gap-2 font-bold">
-            <span className="min-w-0">
+          <p className="flex items-start justify-between gap-3 font-bold">
+            <span className="min-w-0 flex-1">
               {i + 1}. {p.enunciado}
             </span>
             {p.correcta === true && (
-              <Insignia tono="exito">
+              <Insignia tono="exito" className="shrink-0">
                 <Icono nombre="check" tamano={12} /> Correcta
               </Insignia>
             )}
             {p.correcta === false && (
-              <Insignia tono="error">
+              <Insignia tono="error" className="shrink-0">
                 <Icono nombre="x" tamano={12} /> Incorrecta
               </Insignia>
             )}
-            {p.tipo === "abierta" && <Insignia tono="azul">Abierta</Insignia>}
+            {p.tipo === "abierta" && <Insignia tono="azul" className="shrink-0">Abierta</Insignia>}
           </p>
           <p className="mt-2 break-words">
             <strong>Respondió:</strong> {p.respuesta || <em>(sin respuesta)</em>}
@@ -191,7 +191,6 @@ export default function ResultadosPorEstudiante({ cuestionarioId, intentos }: { 
           <thead className="bg-superficie-2">
             <tr>
               <th scope="col" className="px-3 py-2.5">Estudiante</th>
-              <th scope="col" className="px-3 py-2.5">Correo</th>
               <th scope="col" className="px-3 py-2.5">Intentos</th>
               <th scope="col" className="px-3 py-2.5">Primero</th>
               <th scope="col" className="px-3 py-2.5">Último</th>
@@ -207,13 +206,15 @@ export default function ResultadosPorEstudiante({ cuestionarioId, intentos }: { 
               return (
                 <Fragment key={e.email}>
                   <tr className="border-t border-borde transition hover:bg-superficie-2/60">
-                    <td className="px-3 py-2.5 font-semibold">{e.nombre}</td>
-                    <td className="px-3 py-2.5">{e.email}</td>
+                    <td className="px-3 py-2.5">
+                      <p className="font-semibold">{e.nombre}</p>
+                      <p className="whitespace-nowrap text-xs text-suave">{e.email}</p>
+                    </td>
                     <td className="px-3 py-2.5">{e.intentos.length}</td>
                     <td className="px-3 py-2.5 font-bold">{pct(e.primero)}</td>
                     <td className="px-3 py-2.5 font-bold">{pct(e.ultimo)}</td>
                     <td className="px-3 py-2.5 font-bold">{pct(e.mejor)}</td>
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="w-px whitespace-nowrap px-3 py-2.5 text-right">
                       <Boton variante="secundario" tamano="sm" aria-expanded={abierta} onClick={() => alternar(e.email)} className="whitespace-nowrap">
                         {abierta ? "Ocultar" : "Ver respuestas"}
                         <Icono nombre="chevron" tamano={16} className={abierta ? "rotate-180" : ""} />
@@ -222,7 +223,7 @@ export default function ResultadosPorEstudiante({ cuestionarioId, intentos }: { 
                   </tr>
                   {abierta && (
                     <tr className="border-t border-borde bg-superficie-2/40">
-                      <td colSpan={7} className="px-4 py-4">
+                      <td colSpan={6} className="px-4 py-4">
                         <PanelEstudiante cuestionarioId={cuestionarioId} est={e} />
                       </td>
                     </tr>
