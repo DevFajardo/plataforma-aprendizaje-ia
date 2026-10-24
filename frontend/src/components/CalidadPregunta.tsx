@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { guardarEnBanco, verificarCalidad } from "@/lib/api";
+import { editarPregunta, guardarEnBanco, verificarCalidad } from "@/lib/api";
 import type { Pregunta, Verificacion } from "@/lib/tipos";
-import { Alerta, Boton, Icono, Input, Insignia, Select, Tarjeta, TituloSeccion } from "./ui";
+import { Alerta, Boton, Icono, Input, Insignia, Select, Tarjeta, Textarea, TituloSeccion } from "./ui";
 import { useToast } from "@/components/ui/Toast";
 
 /** Convierte "mm:ss" (o "hh:mm:ss") en segundos; null si no es válido. */
@@ -140,6 +140,151 @@ export function GuardarEnBanco({ pregunta, tieneGrupo, onGuardada }: { pregunta:
   );
 }
 
+/** Formulario en línea para corregir la respuesta correcta, las opciones y la explicación de una pregunta. */
+function EditorRespuesta({ pregunta: p, onCancelar, onGuardada }: { pregunta: Pregunta; onCancelar: () => void; onGuardada: () => void }) {
+  const { avisar } = useToast();
+  const [opciones, setOpciones] = useState<string[]>(p.opciones);
+  const [indice, setIndice] = useState(Math.max(0, p.opciones.indexOf(p.respuesta_correcta ?? "")));
+  const [modelo, setModelo] = useState(p.tipo === "abierta" ? (p.respuesta_correcta ?? "") : "");
+  const [explicacion, setExplicacion] = useState(p.explicacion ?? "");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const editableOpciones = p.tipo === "opcion_multiple";
+
+  async function guardar() {
+    setError(null);
+    const ops = opciones.map((o) => o.trim());
+    const respuesta = p.tipo === "abierta" ? modelo.trim() : ops[indice];
+    if (!respuesta) return setError(p.tipo === "abierta" ? "Escribe la respuesta modelo." : "La opción correcta no puede estar vacía.");
+    if (editableOpciones && (ops.some((o) => !o) || new Set(ops).size !== ops.length))
+      return setError("Las opciones no pueden estar vacías ni repetidas.");
+    setGuardando(true);
+    try {
+      await editarPregunta(p.id, {
+        tipo: p.tipo,
+        enunciado: p.enunciado,
+        opciones: p.tipo === "abierta" ? [] : ops,
+        respuesta_correcta: respuesta,
+        explicacion: explicacion.trim(),
+        marca_tiempo: p.marca_tiempo,
+        ra_id: p.ra_id ?? null,
+        nivel_bloom: p.nivel_bloom ?? null,
+      });
+      avisar("Respuesta actualizada. Vuelve a verificar la pregunta.");
+      onGuardada();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-borde bg-superficie-2/60 p-3 text-sm">
+      {p.tipo === "abierta" ? (
+        <Textarea etiqueta="Respuesta modelo" value={modelo} onChange={(e) => setModelo(e.target.value)} rows={3} maxLength={5000} />
+      ) : (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 font-semibold">Marca la opción correcta{editableOpciones && " y corrige su texto si hace falta"}</legend>
+          {opciones.map((o, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                type="radio"
+                name={`correcta-${p.id}`}
+                checked={indice === i}
+                onChange={() => setIndice(i)}
+                aria-label={`Opción ${i + 1} es la correcta`}
+                className="h-5 w-5 shrink-0 accent-primario"
+              />
+              {editableOpciones ? (
+                <Input
+                  etiqueta={`Opción ${i + 1}`}
+                  ocultarEtiqueta
+                  value={o}
+                  onChange={(e) => setOpciones(opciones.map((x, j) => (j === i ? e.target.value : x)))}
+                  maxLength={500}
+                  claseCampo="flex-1"
+                />
+              ) : (
+                <span>{o}</span>
+              )}
+            </div>
+          ))}
+        </fieldset>
+      )}
+      <Textarea etiqueta="Explicación (la ve el estudiante al responder)" value={explicacion} onChange={(e) => setExplicacion(e.target.value)} rows={2} maxLength={5000} />
+      {error && <Alerta tipo="error">{error}</Alerta>}
+      <div className="flex flex-wrap gap-2">
+        <Boton tamano="sm" cargando={guardando} onClick={guardar}>
+          Guardar cambios
+        </Boton>
+        <Boton variante="secundario" tamano="sm" onClick={onCancelar}>
+          Cancelar
+        </Boton>
+      </div>
+    </div>
+  );
+}
+
+/** Clave de respuestas para el docente: opciones con la correcta marcada (o respuesta modelo), explicación y edición en línea. */
+export function ClaveRespuesta({ pregunta: p, onGuardada }: { pregunta: Pregunta; onGuardada?: () => void }) {
+  const [editando, setEditando] = useState(false);
+  if (!p.respuesta_correcta) return null;
+  if (editando && onGuardada)
+    return (
+      <EditorRespuesta
+        pregunta={p}
+        onCancelar={() => setEditando(false)}
+        onGuardada={() => {
+          setEditando(false);
+          onGuardada();
+        }}
+      />
+    );
+  const revisar = p.verificacion?.estado === "revisar";
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      {p.tipo === "abierta" ? (
+        <p className="rounded-lg border border-exito-borde bg-exito-fondo px-3 py-2 text-exito-texto">
+          <strong>Respuesta modelo:</strong> {p.respuesta_correcta}
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-1.5" aria-label="Opciones">
+          {p.opciones.map((o, i) => {
+            const correcta = o === p.respuesta_correcta;
+            return (
+              <li
+                key={i}
+                className={
+                  correcta
+                    ? "flex items-start gap-2 rounded-lg border border-exito-borde bg-exito-fondo px-3 py-1.5 font-semibold text-exito-texto"
+                    : "flex items-start gap-2 rounded-lg border border-borde px-3 py-1.5 text-suave"
+                }
+              >
+                {correcta ? <Icono nombre="check" tamano={14} className="mt-0.5 shrink-0" /> : <span aria-hidden="true" className="w-3.5 shrink-0" />}
+                <span>
+                  {o}
+                  {correcta && <span className="sr-only"> (respuesta correcta)</span>}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {p.explicacion && (
+        <p className="text-suave">
+          <strong className="text-texto">Explicación:</strong> {p.explicacion}
+        </p>
+      )}
+      {onGuardada && (
+        <Boton variante={revisar ? "primario" : "secundario"} tamano="sm" onClick={() => setEditando(true)} className="self-start">
+          <Icono nombre="lapiz" tamano={14} /> {revisar ? "Corregir respuesta" : "Editar respuesta"}
+        </Boton>
+      )}
+    </div>
+  );
+}
+
 /** Panel del docente en el visor: estado de calidad de todas las preguntas, con filtro de las que requieren revisión. */
 export function PanelCalidad({
   cuestionarioId,
@@ -205,6 +350,7 @@ export function PanelCalidad({
               <p className="text-sm font-semibold">
                 {p.orden + 1}. {p.enunciado}
               </p>
+              <ClaveRespuesta pregunta={p} onGuardada={onRecargar} />
               <div className="flex flex-wrap items-center gap-2">
                 <SelloVerificacion v={p.verificacion} />
                 <GuardarEnBanco pregunta={p} tieneGrupo={tieneGrupo} />
