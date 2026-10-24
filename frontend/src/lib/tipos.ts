@@ -707,3 +707,29 @@ export interface FiltrosBanco {
   asignaturas: string[];
   ras: string[];
 }
+
+export interface DetallePreguntaIntento {
+  pregunta_id: number;
+  orden: number;
+  tipo: string;
+  enunciado: string;
+  opciones: string[];
+  respuesta: string;
+  correcta: boolean | null; // null = abierta
+  respuesta_correcta: string;
+  explicacion: string;
+  sugerida: CalificacionIA | null;
+  nota_final: number | null;
+}
+
+export interface IntentoDetalle {
+  intento_id: number;
+  nombre: string;
+  email: string;
+  puntaje: number;
+  total: number;
+  porcentaje: number;
+  fecha: string;
+  tipo: TipoIntento;
+  preguntas: DetallePreguntaIntento[];
+}

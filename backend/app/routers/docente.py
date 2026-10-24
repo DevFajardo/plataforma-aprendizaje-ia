@@ -15,7 +15,9 @@ from app.schemas import Transcripcion
 from app.schemas_api import (
     CalificacionIAOut,
     CompartidoOut,
+    DetallePreguntaIntento,
     DistractorOut,
+    IntentoDetalleOut,
     IntentoResumen,
     ItemAnalisisOut,
     CuestionarioEditarIn,
@@ -415,7 +417,11 @@ def _calcular_resultados(db: Session, c: Cuestionario) -> ResultadosOut:
     filas = db.execute(
         select(Intento, Usuario)
         .join(Usuario, Usuario.id == Intento.usuario_id)
-        .where(Intento.cuestionario_id == c.id, Intento.finalizado.is_(True))
+        .where(
+            Intento.cuestionario_id == c.id,
+            Intento.finalizado.is_(True),
+            Intento.usuario_id != c.creador_id,  # la vista previa del docente no cuenta en las estadísticas
+        )
         .order_by(Intento.creado_en.desc())
     ).all()
 
@@ -574,6 +580,52 @@ def resultados(
     db: Session = Depends(get_db),
 ):
     return _calcular_resultados(db, _propio(db, cuestionario_id, docente))
+
+
+@router.get("/cuestionarios/{cuestionario_id}/intentos/{intento_id}/detalle", response_model=IntentoDetalleOut)
+def detalle_intento(
+    cuestionario_id: int,
+    intento_id: int,
+    docente: Usuario = Depends(requiere_docente),
+    db: Session = Depends(get_db),
+):
+    """Respuestas de un estudiante en un intento, junto a la clave y las notas de las abiertas (solo el creador)."""
+    c = _propio(db, cuestionario_id, docente)
+    intento = db.get(Intento, intento_id)
+    if intento is None or intento.cuestionario_id != c.id or intento.usuario_id == c.creador_id:
+        raise HTTPException(status_code=404, detail="Intento no encontrado.")
+    estudiante = db.get(Usuario, intento.usuario_id)
+    dadas = {r["pregunta_id"]: r for r in json.loads(intento.respuestas_json)}
+    preguntas = []
+    for p in c.preguntas:
+        r = dadas.get(p.id) or {}
+        abierta = p.tipo == "abierta"
+        preguntas.append(
+            DetallePreguntaIntento(
+                pregunta_id=p.id,
+                orden=p.orden,
+                tipo=p.tipo,
+                enunciado=p.enunciado,
+                opciones=[] if abierta else json.loads(p.opciones_json or "[]"),
+                respuesta=r.get("respuesta", ""),
+                correcta=None if abierta else r.get("correcta"),
+                respuesta_correcta=p.respuesta_correcta,
+                explicacion=p.explicacion,
+                sugerida=CalificacionIAOut(**r["ia"]) if abierta and r.get("ia") else None,
+                nota_final=r.get("nota_final") if abierta else None,
+            )
+        )
+    return IntentoDetalleOut(
+        intento_id=intento.id,
+        nombre=estudiante.nombre,
+        email=estudiante.email,
+        puntaje=intento.puntaje,
+        total=intento.total,
+        porcentaje=round(100 * intento.puntaje / intento.total, 1) if intento.total else 0.0,
+        fecha=intento.creado_en,
+        tipo=intento.tipo or "inicial",
+        preguntas=preguntas,
+    )
 
 
 def _celda_segura(valor: str) -> str:

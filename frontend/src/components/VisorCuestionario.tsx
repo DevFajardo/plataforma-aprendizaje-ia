@@ -8,7 +8,7 @@ import { PanelCalidad } from "./CalidadPregunta";
 import PanelTranscripcion from "./PanelTranscripcion";
 import PreguntaCard from "./PreguntaCard";
 import TutorChat from "./TutorChat";
-import { Alerta, BarraPorcentaje, Boton, EncabezadoPagina, Icono, Insignia, Pestanas, Tarjeta, TituloSeccion, cx } from "./ui";
+import { Alerta, BarraPorcentaje, Boton, EncabezadoPagina, Enlace, Icono, Insignia, Pestanas, Tarjeta, TituloSeccion, cx } from "./ui";
 import { pct, plural } from "@/lib/formato";
 
 /** Convierte "mm:ss" (o "hh:mm:ss") en segundos; null si no es válido. */
@@ -314,6 +314,16 @@ export default function VisorCuestionario({
               {c.repaso && !c.repaso.vencido && (
                 <p className="text-sm text-suave">Tu repaso diferido estará disponible desde el {formatearFecha(c.repaso.disponible_desde)}.</p>
               )}
+              {c.es_creador && (
+                <Alerta tipo="info" titulo="Vista previa como estudiante">
+                  Puedes probar el cuestionario tal como lo verá un estudiante. Tus respuestas de prueba no se cuentan en los resultados y se descartan al
+                  salir de esta página. Para ver lo que respondieron tus estudiantes, abre{" "}
+                  <Enlace href={`/cuestionarios/${c.id}/resultados`}>
+                    Resultados
+                  </Enlace>
+                  .
+                </Alerta>
+              )}
               {soloPreguntas && (
                 <p className="text-sm text-suave">En este cuestionario verás tu puntaje al terminar, sin retroalimentación por pregunta.</p>
               )}
@@ -327,12 +337,17 @@ export default function VisorCuestionario({
                 </p>
               </div>
               <Boton tamano="lg" bloque cargando={ocupado} onClick={empezar} className="sm:w-auto sm:self-start">
-                {c.repaso?.vencido ? "Hacer el repaso" : "Empezar cuestionario"}
+                {c.repaso?.vencido ? "Hacer el repaso" : c.es_creador ? "Probar como estudiante" : "Empezar cuestionario"}
                 <Icono nombre="flecha" />
               </Boton>
             </Tarjeta>
           ) : (
             <>
+              {c.es_creador && (
+                <Alerta tipo="info" titulo="Vista previa como estudiante">
+                  Tus respuestas de prueba no se cuentan en los resultados.
+                </Alerta>
+              )}
               {intento.tipo === "diferido" && (
                 <Alerta tipo="info">
                   Estás en el <strong>repaso diferido</strong>: no verás si acertaste hasta finalizar.

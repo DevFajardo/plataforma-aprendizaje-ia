@@ -57,7 +57,13 @@ def _estadisticas(db: Session, ids: list[int]) -> dict[int, EstadisticaBanco]:
     aciertos = {i: 0 for i in ids}
     if por_cuestionario:
         for intento in db.scalars(
-            select(Intento).where(Intento.cuestionario_id.in_(list(por_cuestionario)), Intento.finalizado.is_(True))
+            select(Intento)
+            .join(Cuestionario, Cuestionario.id == Intento.cuestionario_id)
+            .where(
+                Intento.cuestionario_id.in_(list(por_cuestionario)),
+                Intento.finalizado.is_(True),
+                Intento.usuario_id != Cuestionario.creador_id,
+            )
         ):
             mapa = {pid: (bid, tipo) for pid, bid, tipo in por_cuestionario[intento.cuestionario_id]}
             for r in json.loads(intento.respuestas_json):

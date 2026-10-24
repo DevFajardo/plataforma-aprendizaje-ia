@@ -276,7 +276,7 @@ export default function Presentador() {
             <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-cul-naranja">
               <Icono nombre="vivo" tamano={18} /> Clase en vivo
             </p>
-            <h1 className="truncate text-lg font-bold sm:text-xl">{info?.titulo ?? "Cargando…"}</h1>
+            <h1 className="truncate text-lg font-bold sm:text-xl">{info?.titulo ?? (errorInfo || sesion.fatal ? "Clase no disponible" : "Cargando…")}</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {estado && estado.estado !== "lobby" && estado.estado !== "finalizada" && (
@@ -285,7 +285,7 @@ export default function Presentador() {
               </span>
             )}
             {sesion.modo === "sondeo" && <span className="rounded-full bg-cul-amarillo px-3 py-1 text-sm font-bold text-cul-azul-oscuro">Modo de respaldo</span>}
-            {sesion.modo === "conectando" && <span className="rounded-full bg-white/15 px-3 py-1 text-sm font-semibold">Conectando…</span>}
+            {sesion.modo === "conectando" && !errorInfo && !sesion.fatal && <span className="rounded-full bg-white/15 px-3 py-1 text-sm font-semibold">Conectando…</span>}
             <button
               type="button"
               onClick={alternarPantallaCompleta}

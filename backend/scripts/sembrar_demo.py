@@ -335,7 +335,7 @@ def sembrar(db, ahora_: datetime | None = None, semilla: int = SEMILLA, verboso:
         db.flush()
         _registrar(db, "cuestionarios", c)
         lista = []
-        for orden, d in enumerate(contenido["preguntas"], start=1):
+        for orden, d in enumerate(contenido["preguntas"]):
             tipo, enunciado, opciones, correcta, explicacion, marca, ra, bloom = d[:8]
             seg = max((s for s in contenido["transcripcion"] if s[0] <= int(marca[:2]) * 60 + int(marca[3:])), key=lambda s: s[0])
             verificacion = {"estado": "verificada", "respaldo": "si", "cita": seg[1][:220], "marca_tiempo": marca,

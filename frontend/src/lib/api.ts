@@ -39,6 +39,7 @@ import type {
   PreguntaBanco,
   RespuestaTutor,
   TranscripcionVideo,
+  IntentoDetalle,
 } from "./tipos";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -513,3 +514,6 @@ export async function urlSubtitulos(videoId: number): Promise<string> {
 export const descargarTranscripcion = (videoId: number) => descargarArchivo(`/api/videos/${videoId}/transcripcion.txt`, `transcripcion_${videoId}.txt`);
 
 export const descargarSubtitulos = (videoId: number) => descargarArchivo(`/api/videos/${videoId}/subtitulos.vtt`, `subtitulos_${videoId}.vtt`);
+
+export const obtenerDetalleIntento = (cuestionarioId: number, intentoId: number) =>
+  peticion<IntentoDetalle>(`/api/cuestionarios/${cuestionarioId}/intentos/${intentoId}/detalle`);

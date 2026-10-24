@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import BotonInstalarApp from "@/components/BotonInstalarApp";
 import { useTutorial } from "@/components/Tutorial";
@@ -45,7 +44,6 @@ const ROLES: Record<string, string> = { docente: "Docente", estudiante: "Estudia
 
 export default function CuentaPage() {
   const { usuario, cargando, actualizarUsuario, logout } = useRequiereLogin();
-  const router = useRouter();
   const tutorial = useTutorial();
 
   const [nombre, setNombre] = useState<string | null>(null); // null = sin editar (se muestra el actual)
@@ -148,8 +146,7 @@ export default function CuentaPage() {
     setOcupado(true);
     try {
       await eliminarCuenta(claveBorrar);
-      logout();
-      router.replace("/");
+      logout("/");
     } catch (err) {
       setMsgBorrar(mensajeError(err));
       setOcupado(false);

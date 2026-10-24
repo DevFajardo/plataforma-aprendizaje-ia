@@ -38,9 +38,10 @@ function Contenido() {
   const { errores, ref, validarCampo, validarTodo, limpiar } = useValidacion<Valores>(REGLAS);
   const valores: Valores = { nombre, email, password, aceptaDatos };
 
+  // Si ya hay una sesión abierta, el destino guardado puede ser de otro usuario: siempre /panel.
   useEffect(() => {
-    if (usuario) router.replace(destino);
-  }, [usuario, router, destino]);
+    if (usuario) router.replace("/panel");
+  }, [usuario, router]);
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -49,7 +50,9 @@ function Contenido() {
     setEnviando(true);
     try {
       await registro(nombre.trim(), email.trim(), password, rol, aceptaDatos, aceptaEstudio);
-      router.replace(destino);
+      // Navegación completa: ningún estado de una sesión anterior sobrevive
+      window.location.replace(destino);
+      return;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {

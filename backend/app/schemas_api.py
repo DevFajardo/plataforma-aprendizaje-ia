@@ -402,6 +402,32 @@ class IntentoResultado(BaseModel):
     consentimiento_investigacion: bool = False
 
 
+class DetallePreguntaIntento(BaseModel):
+    pregunta_id: int
+    orden: int
+    tipo: str
+    enunciado: str
+    opciones: list[str] = []
+    respuesta: str = ""  # vacío = sin responder
+    correcta: bool | None = None  # None en abiertas
+    respuesta_correcta: str = ""
+    explicacion: str = ""
+    sugerida: CalificacionIAOut | None = None  # nota sugerida por la IA (abiertas)
+    nota_final: int | None = None  # nota del docente (abiertas)
+
+
+class IntentoDetalleOut(BaseModel):
+    intento_id: int
+    nombre: str
+    email: str
+    puntaje: int
+    total: int
+    porcentaje: float
+    fecha: FechaUTC
+    tipo: str = "inicial"
+    preguntas: list[DetallePreguntaIntento]
+
+
 class RespuestaAbiertaOut(BaseModel):
     intento_id: int | None = None
     nombre: str

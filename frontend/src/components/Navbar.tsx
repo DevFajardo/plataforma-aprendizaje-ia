@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import CampanaNotificaciones from "./CampanaNotificaciones";
@@ -46,7 +46,6 @@ const ROL: Record<string, string> = { docente: "Docente", estudiante: "Estudiant
 export default function Navbar() {
   const { usuario, logout } = useAuth();
   const ruta = usePathname();
-  const router = useRouter();
   // Se guarda la ruta en la que se abrió cada menú: al navegar cambia la ruta y el menú queda cerrado solo.
   const [menuEn, setMenuEn] = useState<string | null>(null);
   const [usuarioEn, setUsuarioEn] = useState<string | null>(null);
@@ -91,8 +90,7 @@ export default function Navbar() {
   }, [menuAbierto]);
 
   function salir() {
-    logout();
-    router.replace("/login");
+    logout("/login");
   }
 
   function esActivo(href: string) {

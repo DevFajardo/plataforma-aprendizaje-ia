@@ -282,3 +282,38 @@ def test_sus_resumen_solo_docente_y_csv_anonimo(cliente, docente, estudiante, ot
 def test_sus_resumen_vacio(cliente, docente):
     r = cliente.get("/api/sus/resumen", headers=docente).json()
     assert r["n"] == 0 and r["promedio"] is None
+
+
+# ---------- Detalle de intento por estudiante ----------
+
+def test_detalle_de_intento_para_el_creador(cliente, docente, estudiante, crear_cuestionario, intentar):
+    cid = _preparar_resultados(cliente, docente, estudiante, crear_cuestionario, intentar)
+    intentos = cliente.get(f"/api/cuestionarios/{cid}/resultados", headers=docente).json()["intentos"]
+    d = cliente.get(f"/api/cuestionarios/{cid}/intentos/{intentos[-1]['intento_id']}/detalle", headers=docente)
+    assert d.status_code == 200, d.text
+    d = d.json()
+    assert d["email"] == "estudiante@prueba.com" and len(d["preguntas"]) == 3
+    cerrada = next(p for p in d["preguntas"] if p["tipo"] != "abierta")
+    assert cerrada["respuesta"] and cerrada["respuesta_correcta"] and cerrada["correcta"] in (True, False)
+    assert next(p for p in d["preguntas"] if p["tipo"] == "abierta")["correcta"] is None
+
+
+def test_detalle_de_intento_403_y_404(cliente, docente, estudiante, crear_cuestionario, intentar):
+    from tests.conftest import _registrar
+
+    cid = _preparar_resultados(cliente, docente, estudiante, crear_cuestionario, intentar)
+    iid = cliente.get(f"/api/cuestionarios/{cid}/resultados", headers=docente).json()["intentos"][0]["intento_id"]
+    url = f"/api/cuestionarios/{cid}/intentos/{iid}/detalle"
+    otro_docente = _registrar(cliente, "docente", "Docente Dos", "docente2@prueba.com")
+    assert cliente.get(url, headers=otro_docente).status_code == 403
+    assert cliente.get(url, headers=estudiante).status_code == 403
+    assert cliente.get(url).status_code == 401
+    assert cliente.get(f"/api/cuestionarios/{cid}/intentos/99999/detalle", headers=docente).status_code == 404
+
+
+def test_intentos_del_creador_no_cuentan_en_resultados(cliente, docente, estudiante, crear_cuestionario, intentar):
+    cid = _preparar_resultados(cliente, docente, estudiante, crear_cuestionario, intentar)
+    intentar(docente, cid, correctas=0)
+    r = cliente.get(f"/api/cuestionarios/{cid}/resultados", headers=docente).json()
+    assert r["total_intentos"] == 2 and r["estudiantes_unicos"] == 1
+    assert all(i["email"] != "docente@prueba.com" for i in r["intentos"])

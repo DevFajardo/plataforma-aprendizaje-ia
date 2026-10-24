@@ -20,6 +20,7 @@ import {
 } from "@/components/ui";
 import AnalisisItems from "@/components/AnalisisItems";
 import HistorialVivo from "@/components/HistorialVivo";
+import ResultadosPorEstudiante from "@/components/ResultadosPorEstudiante";
 import RevisionAbiertas from "@/components/RevisionAbiertas";
 import { descargarCsv, descargarPdfCuestionario, obtenerResultados } from "@/lib/api";
 import { useRequiereLogin } from "@/lib/auth";
@@ -139,7 +140,7 @@ function Contenido() {
   const [datos, setDatos] = useState<Resultados | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [descargando, setDescargando] = useState(false);
-  const [pestana, setPestana] = useState<"resultados" | "vivo">("resultados");
+  const [pestana, setPestana] = useState<"resultados" | "estudiantes" | "vivo">("resultados");
 
   const [recarga, setRecarga] = useState(0); // al cambiarlo se vuelven a pedir los resultados (p. ej. tras aprobar una nota)
 
@@ -207,6 +208,7 @@ function Contenido() {
             etiqueta="Secciones de resultados"
             items={[
               { id: "resultados", texto: "Resultados" },
+              { id: "estudiantes", texto: "Por estudiante" },
               { id: "vivo", texto: "Sesiones en vivo" },
             ]}
             activa={pestana}
@@ -214,6 +216,8 @@ function Contenido() {
           >
           {pestana === "vivo" ? (
             <HistorialVivo cuestionarioId={Number(id)} />
+          ) : pestana === "estudiantes" ? (
+            <ResultadosPorEstudiante cuestionarioId={Number(id)} intentos={datos.intentos} />
           ) : (
           <div className="flex flex-col gap-8">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">

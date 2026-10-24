@@ -242,7 +242,7 @@ export default function BancoPage() {
             <Icono nombre="flecha" tamano={16} /> Buscar
           </Boton>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Select etiqueta="Asignatura" value={asignatura} onChange={filtra(setAsignatura)}>
             <option value="">Todas</option>
             {filtros.asignaturas.map((a) => (
