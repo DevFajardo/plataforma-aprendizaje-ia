@@ -27,3 +27,8 @@ cookies_youtube.txt
 *.log
 *.tsbuildinfo
 next-env.d.ts
+
+# Video de demostración (pesado; no se versiona)
+docs/video/*.mp4
+docs/video/scripts/salida/
+docs/video/scripts/node_modules/

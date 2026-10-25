@@ -1,0 +1,1 @@
+﻿{ "name": "video-demo", "private": true, "description": "Scripts para grabar el video de demostracion", "dependencies": { "playwright": "^1.50.0" } }
