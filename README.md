@@ -181,7 +181,7 @@ El registro exige aceptar la **política de tratamiento de datos personales** (`
 
 ## Despliegue
 
-Consulta la [Guía de despliegue](docs/DESPLIEGUE.md): demo local, demo en red local (`iniciar_demo.ps1`), enlace público temporal (Cloudflare Tunnel) o nube gratuita (Vercel + Render + Neon; el repositorio incluye `render.yaml`). La app es instalable (PWA).
+Consulta la [Guía de despliegue](docs/DESPLIEGUE.md): demo local, demo en red local (`iniciar_demo.ps1`), enlace público temporal (Cloudflare Tunnel) o nube gratuita. Para publicar **todo junto y rápido**, aplica el `render.yaml` del repo en Render: crea frontend, backend y PostgreSQL gratuitos en un solo Blueprint. La app es instalable (PWA).
 
 ## Estructura
 

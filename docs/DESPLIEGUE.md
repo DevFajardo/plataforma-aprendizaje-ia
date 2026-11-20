@@ -91,9 +91,10 @@ Remove-NetFirewallRule -DisplayName "Aprendizaje Activo (demo LAN)"
 
 | Pieza | Servicio | Notas |
 |---|---|---|
-| Frontend | **Vercel** | Plan *Hobby* gratuito. |
+| Todo en un clic | **Render Blueprint** (`render.yaml`) | Frontend + backend + PostgreSQL gratis; la BD expira a 30 días. Ver [Plan de publicación](PLAN_PUBLICACION.md). |
+| Frontend | **Vercel** | Plan *Hobby* gratuito. Alternativa al frontend del Blueprint. |
 | Backend | **Render** (con el `Dockerfile`) o **Hugging Face Spaces** (Docker) | Plan gratuito con limitaciones (abajo). |
-| Base de datos | **Neon** o **Supabase** (PostgreSQL) | El disco del backend gratuito es efímero: SQLite se perdería. |
+| Base de datos | **Neon** o **Supabase** (PostgreSQL) | Para BD permanente; el disco del backend gratuito es efímero: SQLite se perdería. |
 
 ### 1. Base de datos en Neon (PostgreSQL)
 
@@ -103,11 +104,11 @@ Remove-NetFirewallRule -DisplayName "Aprendizaje Activo (demo LAN)"
 
 ### 2. Backend en Render (Docker, plan gratuito)
 
-El repositorio incluye `render.yaml` (Blueprint) con el servicio web Docker del backend, el *health check* `/api/salud` y la lista de variables.
+El repositorio incluye `render.yaml` (Blueprint) con el servicio web Docker del backend, el frontend Next.js, una PostgreSQL gratuita, el *health check* `/api/salud` y la lista de variables. Para desplegar solo el backend con Neon, crea el servicio manualmente como se describe abajo.
 
 1. Sube el proyecto a GitHub (el `.env` y los `*.db` están en `.gitignore`).
 2. En Render: **New → Blueprint** → elige el repositorio (lee `render.yaml`), o **New → Web Service** → **Root Directory** `backend` → **Runtime: Docker**. Render define `$PORT`.
-3. Variables de entorno: `DATABASE_URL` (Neon), `FRONTEND_URL` (la URL de Vercel; se puede dejar `http://localhost:3000` al principio y actualizarla), `GEMINI_API_KEY`, `GROQ_API_KEY`, `PROVEEDORES_IA=gemini,groq`, `SECRET_KEY` (el Blueprint la genera) e `IDIOMA_TRANSCRIPCION=es`.
+3. Variables de entorno: `DATABASE_URL` (Neon), `FRONTEND_URL` (la URL de Vercel; se puede dejar `http://localhost:3000` al principio y actualizarla), `GEMINI_API_KEY`, `GROQ_API_KEY`, `PROVEEDORES_IA=gemini,groq`, `SECRET_KEY` e `IDIOMA_TRANSCRIPCION=es`. Si aplicas el Blueprint completo, solo se piden las claves de IA; `DATABASE_URL`, `FRONTEND_URL` y las URLs públicas se resuelven entre servicios.
 4. **Un solo worker y una sola instancia.** La clase en vivo guarda su estado (sesiones, conexiones WebSocket) en la memoria del proceso. El `Dockerfile` lanza `uvicorn` con un único proceso; no uses `--workers N` ni escales a varias instancias.
 5. **WebSockets.** Render los admite sobre el mismo servicio: el navegador usa `wss://TU-BACKEND.onrender.com/…` automáticamente porque la API es `https://`. No hay configuración adicional.
 6. Despliega y comprueba `https://TU-BACKEND.onrender.com/api/salud`.

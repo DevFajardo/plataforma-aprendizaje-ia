@@ -8,12 +8,13 @@
 
 | Necesidad | Mejor opción gratuita | Por qué |
 |---|---|---|
+| **Todo junto y rápido (un solo clic)** | **Render Blueprint**: `render.yaml` crea frontend + backend + PostgreSQL gratis | Una sola cuenta, HTTPS, WebSockets y CORS resueltos automáticamente. La BD gratis de Render expira a los 30 días (sección 4). |
 | **Demo ante jurado con YouTube funcionando** | Backend en **tu PC + Cloudflare Tunnel** (opción A del [Manual de despliegue](DESPLIEGUE.md)) | Tu IP es residencial: YouTube no bloquea subtítulos ni audio. Sin *cold start*. Sin costo. |
-| **Publicación 24/7** | **Vercel Hobby** (frontend) + **Render Free** (backend Docker) + **Neon Free** (PostgreSQL) | Todo gratuito, HTTPS, WebSockets y BD persistente. Con las limitaciones de la sección 3. |
+| **Publicación 24/7 con BD permanente** | **Vercel Hobby** (frontend) + **Render Free** (backend Docker) + **Neon Free** (PostgreSQL) | Todo gratuito, HTTPS, WebSockets y BD persistente. Con las limitaciones de la sección 3. |
 | **Si Render se duerme y eso rompe la demo** | **Oracle Cloud Always Free** (VM ARM con Docker) o mantener el túnel | Sin suspensión por inactividad; requiere más configuración. |
 | **Si YouTube bloquea la nube** | Subir MP4 / pre-cargar subtítulos desde casa | Es el único arreglo **gratis** y fiable (ver sección 2). |
 
-**No uses Render Postgres gratuito:** expira a los 30 días. Usa Neon o Supabase.
+**Render Postgres gratis:** sirve para la demo del Blueprint porque expira a los 30 días. Para una BD permanente, crea Neon/Supabase y sobrescribe `DATABASE_URL` en el backend.
 
 ## 2. Bloqueos reales y cómo mitigarlos
 
@@ -59,7 +60,7 @@ Notas importantes:
 | **Render Free** | 0,1 CPU / 512 MB; se duerme tras **15 min** sin tráfico HTTP **ni WebSocket**; arranque ~1 min; 750 h/mes; 5 GB ancho de banda; 500 min de build; sistema de archivos efímero; sin SSH/Shell; puede reiniciarse cuando quiera; una sola instancia | Despierta `/api/salud` antes de presentar. Un *ping* periódico evita el sueñopero consume horas. No guardes nada importante en `subidas/`. Ejecuta los scripts de semilla **desde tu PC** contra Neon. |
 | **Neon Free** | 1 GB por proyecto (20 GB por cuenta), 100 CU-h/mes, 5 GB egreso, *scale to zero* tras 5 min (no se puede desactivar), reanudación en cientos de ms | Suficiente para la demo. Si se agotan CU-h o egreso, la BD se suspende hasta el mes siguiente; no pierde datos. |
 | **Vercel Hobby** | 100 GB transferencia, 1 M invocaciones, 4 CPU-h, 300 s por función, 2 GB RAM, uso **no comercial** | El frontend es estático, no afecta. Proyecto académico = uso permitido. Para negocio haría falta Pro. |
-| **Render Postgres Free** | **Expira a los 30 días**, 1 GB | No usar. Neon no expira. |
+| **Render Postgres Free** | **Expira a los 30 días**, 1 GB | Sirve para la demo de un clic; Neon no expira. |
 
 ### 2.4 Restricciones de la propia aplicación
 
@@ -68,14 +69,14 @@ Notas importantes:
 | **Un solo worker / una sola instancia** | El estado de la clase en vivo vive en memoria (`services/vivo.py:1-9`) | El `Dockerfile` ya lanza un solo `uvicorn`. No añadas `--workers` ni escales. |
 | `BackgroundTasks` en el mismo proceso | No hay cola externa | Si Render reinicia a mitad de generación, la tarea queda `error` al arrancar (limpieza en `main.py:38-57`). Reintenta. |
 | Archivos subidos en disco local | `subidas/` es efímero en la nube | Aceptable para demo. Para persistencia haría falta almacenamiento de objetos (cambio de código). |
-| CORS | `FRONTEND_URL` debe contener la URL de Vercel, sin barra final | Añade la URL y reinicia el backend. |
+| CORS | `FRONTEND_URL` debe contener la URL del frontend (Render o Vercel), sin barra final | Añade la URL y reinicia el backend. |
 | Contenido mixto | Con `NEXT_PUBLIC_API_URL=http://…`, el navegador bloquea API y WebSocket | Usa **https** siempre en nube. |
 | QR de clase en vivo | Si el docente abre `localhost`, el QR apunta a `localhost` | Define `NEXT_PUBLIC_URL_PUBLICA=https://TU-FRONTEND.vercel.app` antes de compilar. |
-| PWA | Requiere contexto seguro | En Vercel (https) funciona; sobre `http://IP` en LAN no. |
+| PWA | Requiere contexto seguro | Con https (Render o Vercel) funciona; sobre `http://IP` en LAN no. |
 
 ## 3. Matriz «¿sigue funcionando igual?»
 
-| Funcionalidad | En PC + túnel | En Render + Vercel + Neon |
+| Funcionalidad | En PC + túnel | En nube (Blueprint o Render + Vercel + Neon) |
 |---|---|---|
 | Generar desde YouTube | Sí (IP residencial) | Solo con subtítulos o subiendo archivo |
 | Generar desde Vimeo | Sí | Sí, dentro de 8 h de audio/día en Groq |
@@ -87,24 +88,38 @@ Notas importantes:
 | Datos persistentes | SQLite local | PostgreSQL de Neon |
 | Arranque inmediato | Sí | ~1 min tras 15 min inactivo |
 
-## 4. Paso a paso: Vercel + Render + Neon
+## 4. Paso a paso: todo junto en Render (rápido)
+
+1. **GitHub.** El repo `DevFajardo/plataforma-aprendizaje-ia` ya está público en `main`; `render.yaml` está en la raíz.
+2. **Render.** Entra en Render → *New → Blueprint* → selecciona el repo → *Apply*. El Blueprint crea:
+   - `aprendizaje-activo-api`: backend Docker desde `backend/` (health check `/api/salud`).
+   - `aprendizaje-activo-web`: frontend Next.js desde `frontend/`.
+   - `aprendizaje-activo-db`: PostgreSQL gratuita de Render.
+3. **Variables que Render pide al aplicar:** `GEMINI_API_KEY` y `GROQ_API_KEY`. `SECRET_KEY` se genera sola; `DATABASE_URL`, `FRONTEND_URL`, `NEXT_PUBLIC_API_URL` y `NEXT_PUBLIC_URL_PUBLICA` se resuelven entre los servicios del Blueprint.
+4. **URLs.** Render mostrará `https://aprendizaje-activo-web.onrender.com` (frontend) y `https://aprendizaje-activo-api.onrender.com` (backend). Si el nombre ya está ocupado, Render añade un sufijo: usa las URLs reales que aparezcan en el dashboard; el Blueprint ya las propaga.
+5. **Datos demo.** Ejecuta `crear_demo.py`, `sembrar_estructura.py` y `sembrar_demo.py` desde tu PC con `DATABASE_URL` apuntando a la BD de Render. Cambia las contraseñas `Demo12345` antes de abrir al público.
+6. **Verificación.** Despierta `/api/salud`, abre el frontend, genera un cuestionario desde un video **con subtítulos** o sube un MP4, responde, publica y comprueba la clase en vivo desde otro navegador.
+
+**Concesiones:** la BD gratis expira a 30 días; Render duerme ambos servicios tras 15 min de inactividad; YouTube desde IP de nube suele fallar (usa subtítulos o MP4). Para BD permanente, crea Neon y reemplaza solo `DATABASE_URL` en el backend; el resto del Blueprint sigue igual.
+
+## 5. Alternativa: Vercel + Render + Neon (BD permanente)
 
 1. **GitHub.** El repo `DevFajardo/plataforma-aprendizaje-ia` ya está en `main` con `gh` autenticado. Verifica que no haya secretos: `.env`, `*.db`, `subidas/` y `cookies_youtube.txt` están en `.gitignore`.
 2. **Neon.** Crea proyecto gratuito → copia *Connection string* con `sslmode=require`. Formato aceptado: `postgresql+psycopg://usuario:clave@host/db?sslmode=require`.
-3. **Render.** *New → Blueprint* → selecciona el repo (lee `render.yaml`). Variables: `DATABASE_URL` (Neon), `FRONTEND_URL` (URL de Vercel), `GEMINI_API_KEY`, `GROQ_API_KEY`, `PROVEEDORES_IA=gemini,groq`, `GEMINI_MODEL=gemini-3.5-flash-lite`, `IDIOMA_TRANSCRIPCION=es`, `SECRET_KEY` (la genera el Blueprint). Health check: `/api/salud`.
+3. **Render.** No apliques el Blueprint completo de la sección 4: crea *New → Web Service* manualmente, repositorio del repo, **Root Directory `backend`**, entorno **Docker**, plan **Free**, health check `/api/salud`. Variables: `DATABASE_URL` (Neon), `FRONTEND_URL` (URL de Vercel), `GEMINI_API_KEY`, `GROQ_API_KEY`, `PROVEEDORES_IA=gemini,groq`, `GEMINI_MODEL=gemini-3.5-flash-lite`, `IDIOMA_TRANSCRIPCION=es`, `SECRET_KEY` larga y aleatoria.
 4. **Vercel.** *Add New → Project* → importa el repo → **Root Directory `frontend`** → variables `NEXT_PUBLIC_API_URL=https://TU-BACKEND.onrender.com` y `NEXT_PUBLIC_URL_PUBLICA=https://TU-FRONTEND.vercel.app`.
 5. **CORS.** Actualiza `FRONTEND_URL` en Render con la URL de Vercel y reinicia.
 6. **Datos demo.** Desde tu PC (con `DATABASE_URL` apuntando a Neon): `crear_demo.py`, `sembrar_estructura.py` y `sembrar_demo.py`. **Cambia las contraseñas `Demo12345` antes de abrir al público.**
 7. **Verificación.** `GET /api/salud` debe listar los proveedores; prueba registro → generar (usa un video con subtítulos) → responder → publicar → unirse desde otro navegador → resultados/CSV → SUS → clase en vivo.
 
-## 5. Checklist antes de publicar
+## 6. Checklist antes de publicar
 
 - [ ] Claves de API **regeneradas** y nunca commits; `SECRET_KEY` larga y aleatoria.
 - [ ] `GEMINI_MODEL` fijado a un modelo existente en AI Studio (revisa su RPD real).
 - [ ] Claves de Gemini y Groq cargadas en Render; `PROVEEDORES_IA` con ambos.
-- [ ] `FRONTEND_URL` con la URL exacta de Vercel; `NEXT_PUBLIC_API_URL` en **https**.
-- [ ] `NEXT_PUBLIC_URL_PUBLICA` definida para el QR.
-- [ ] Neon como BD (no Render Postgres); cadena con `sslmode=require`.
+- [ ] `FRONTEND_URL` con la URL exacta del frontend (Render o Vercel); `NEXT_PUBLIC_API_URL` en **https**.
+- [ ] `NEXT_PUBLIC_URL_PUBLICA` definida para el QR (el Blueprint la resuelve solo).
+- [ ] BD de Render para demo (expira a 30 días) o Neon para permanente; cadena con `sslmode=require`.
 - [ ] Un solo worker/instancia en Render.
 - [ ] Video MP4 de respaldo subido y/o cuestionario ya generado y publicado.
 - [ ] Datos demo sembrados y contraseñas cambiadas.
@@ -112,7 +127,7 @@ Notas importantes:
 - [ ] `/api/salud` responde y `/ws/vivo/{pin}` conecta desde el celular.
 - [ ] Texto de `/privacidad` con el correo real del responsable (marcador `[correo del responsable]`).
 
-## 6. Fuentes consultadas
+## 7. Fuentes consultadas
 
 - Render: <https://render.com/docs/free> y <https://render.com/pricing> (15 min de inactividad, 750 h, efímero, expiración de Postgres gratis).
 - Neon: <https://neon.com/docs/introduction/plans> (1 GB, 100 CU-h, scale-to-zero).

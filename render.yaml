@@ -1,4 +1,4 @@
-# Blueprint de Render (plan gratuito) para el BACKEND. El frontend va en Vercel (ver docs/DESPLIEGUE.md).
+# Blueprint de Render (plan gratuito): frontend, backend y PostgreSQL en un solo despliegue.
 # No contiene secretos: las variables con `sync: false` se piden al crear el servicio.
 services:
   - type: web
@@ -8,24 +8,57 @@ services:
     rootDir: backend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/salud
-    autoDeploy: true
+    autoDeployTrigger: commit
     # IMPORTANTE: un solo worker/instancia. El estado de la clase en vivo (WebSocket) vive en memoria del proceso;
     # con varios workers o instancias los participantes quedarían en procesos distintos. El Dockerfile ya lanza
     # uvicorn con un único proceso: no lo cambies a --workers N ni escales a más de una instancia.
     envVars:
-      - key: DATABASE_URL        # cadena de Neon: postgresql+psycopg://usuario:clave@host/db?sslmode=require
-        sync: false
-      - key: SECRET_KEY          # cadena larga aleatoria (>= 32 caracteres)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aprendizaje-activo-db
+          property: connectionString
+      - key: SECRET_KEY
         generateValue: true
-      - key: FRONTEND_URL        # URL de Vercel; admite varias separadas por comas, sin barra final
-        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          name: aprendizaje-activo-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
       - key: GEMINI_API_KEY
         sync: false
       - key: GROQ_API_KEY
         sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
       - key: PROVEEDORES_IA
         value: gemini,groq
       - key: IDIOMA_TRANSCRIPCION
         value: es
       - key: PYTHON_VERSION
         value: "3.12"
+
+  - type: web
+    name: aprendizaje-activo-web
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci
+    startCommand: npm run start
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: aprendizaje-activo-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_URL_PUBLICA
+        fromService:
+          name: aprendizaje-activo-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+databases:
+  - name: aprendizaje-activo-db
+    plan: free
