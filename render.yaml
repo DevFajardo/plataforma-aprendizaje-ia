@@ -42,7 +42,7 @@ services:
     runtime: node
     plan: free
     rootDir: frontend
-    buildCommand: npm install
+    buildCommand: npm install && npm run build
     startCommand: npm run start
     autoDeployTrigger: commit
     envVars:
