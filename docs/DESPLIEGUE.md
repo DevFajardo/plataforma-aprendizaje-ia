@@ -2,6 +2,8 @@
 
 Hay dos caminos. Para la **presentación** se recomienda la **opción A (demo local)**: no depende de servicios externos, YouTube no bloquea tu conexión de casa y tienes control total.
 
+> Para publicar de forma permanente con planes gratuitos, consulta el [Plan de publicación](PLAN_PUBLICACION.md): límites vigentes de Vercel/Render/Neon, bloqueos de YouTube y cuotas de IA con sus mitigaciones. Para mantener el sistema después, [Operación y soporte](OPERACION.md).
+
 ## Opción A: demo local (recomendada para la presentación)
 
 ### 1. Preparar el backend

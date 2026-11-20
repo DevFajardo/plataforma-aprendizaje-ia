@@ -4,7 +4,7 @@ Aplicación web que convierte un **video de YouTube o Vimeo** (o un **archivo de
 
 Proyecto universitario. Todo el stack usa planes **gratuitos**; la interfaz, los comentarios y la documentación están en español.
 
-> Documentación adicional: [Manual de usuario](docs/MANUAL_USUARIO.md) · [Manual técnico](docs/MANUAL_TECNICO.md) · [Guía de despliegue](docs/DESPLIEGUE.md)
+> Documentación: [Índice completo](docs/DOCUMENTACION.md) · [Manual de usuario](docs/MANUAL_USUARIO.md) · [Manual técnico](docs/MANUAL_TECNICO.md) · [Referencia de API](docs/REFERENCIA_API.md) · [Guía de despliegue](docs/DESPLIEGUE.md) · [Plan de publicación gratuita](docs/PLAN_PUBLICACION.md) · [Operación y soporte](docs/OPERACION.md)
 
 ## Capturas de pantalla
 
